@@ -13,9 +13,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Idegis / AstralPool — alerts",
-        "description": "Pick which conditions should raise an alert, and the notify.* service to send it to (e.g. notify.telegram_jarvis, notify.mobile_app_phone). Leave notify_service empty to disable dispatch while still seeing warnings in the log.",
+        "title": "Idegis / AstralPool — alerts & energy",
+        "description": "Pick which conditions should raise an alert, and the notify.* service to send it to (e.g. notify.telegram_jarvis, notify.mobile_app_phone). Leave notify_service empty to disable dispatch while still seeing warnings in the log. Pump/grid power entities are optional and feed the cost + filtration recommendation sensors.",
         "data": {
+          "pump_power_entity": "Filtration pump power sensor",
+          "grid_power_entity": "House grid power sensor (optional, for solar split)",
           "ph_enabled": "Alert on pH out of range",
           "ph_min": "pH minimum",
           "ph_max": "pH maximum",

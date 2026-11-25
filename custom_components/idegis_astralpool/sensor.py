@@ -27,7 +27,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER, MODEL_DEFAULT
-from .coordinator import IdegisCloudMitmCoordinator
+from .coordinator import IdegisCloudMitmCoordinator, IdegisCostCoordinator
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -193,21 +193,98 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
 )
 
 
+def _cost(d: dict[str, Any], window: str, field: str) -> Any:
+    cost = d.get("cost")
+    if not cost:
+        return None
+    return cost.get(window, {}).get(field)
+
+
+# Fed by IdegisCostCoordinator (history_glue.py), not the chlorinator's
+# own push updates — see coordinator.py's module docstring. Stay
+# unavailable (native_value -> None) until a pump_power_entity is picked
+# in the options flow, same honesty-over-fake-data pattern as alerts.py's
+# filtration check.
+COST_SENSORS: tuple[IdegisSensorDescription, ...] = (
+    IdegisSensorDescription(
+        key="recommended_filtration_minutes_today",
+        translation_key="recommended_filtration_minutes_today",
+        name="Recommended filtration minutes today",
+        native_unit_of_measurement="min",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: (d.get("recommendation") or {}).get("recommended_minutes_today"),
+    ),
+    IdegisSensorDescription(
+        key="filtration_cost_24h",
+        translation_key="filtration_cost_24h",
+        name="Filtration cost (24h)",
+        native_unit_of_measurement="EUR",
+        state_class=SensorStateClass.TOTAL,
+        suggested_display_precision=2,
+        value_fn=lambda d: _cost(d, "24h", "grid_eur"),
+    ),
+    IdegisSensorDescription(
+        key="filtration_cost_7d",
+        translation_key="filtration_cost_7d",
+        name="Filtration cost (7d)",
+        native_unit_of_measurement="EUR",
+        state_class=SensorStateClass.TOTAL,
+        suggested_display_precision=2,
+        value_fn=lambda d: _cost(d, "7d", "grid_eur"),
+    ),
+    IdegisSensorDescription(
+        key="filtration_cost_30d",
+        translation_key="filtration_cost_30d",
+        name="Filtration cost (30d)",
+        native_unit_of_measurement="EUR",
+        state_class=SensorStateClass.TOTAL,
+        suggested_display_precision=2,
+        value_fn=lambda d: _cost(d, "30d", "grid_eur"),
+    ),
+    IdegisSensorDescription(
+        key="filtration_solar_pct_30d",
+        translation_key="filtration_solar_pct_30d",
+        name="Filtration solar share (30d)",
+        native_unit_of_measurement="%",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: _cost(d, "30d", "solar_pct"),
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    coordinator: IdegisCloudMitmCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinators = hass.data[DOMAIN][entry.entry_id]
+    coordinator: IdegisCloudMitmCoordinator = coordinators["cloud_mitm"]
+    cost_coordinator: IdegisCostCoordinator = coordinators["cost"]
     async_add_entities(
-        IdegisSensor(coordinator, desc, entry.entry_id) for desc in SENSORS
+        [IdegisSensor(coordinator, desc, entry.entry_id) for desc in SENSORS]
+        + [IdegisCostSensor(cost_coordinator, desc, entry.entry_id) for desc in COST_SENSORS]
     )
 
 
-class IdegisSensor(CoordinatorEntity[IdegisCloudMitmCoordinator], SensorEntity):
+class _IdegisSensorBase(SensorEntity):
     entity_description: IdegisSensorDescription
     _attr_has_entity_name = True
 
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_identifier())},
+            manufacturer=MANUFACTURER,
+            model=MODEL_DEFAULT,
+            name="Idegis chlorinator",
+        )
+
+    def _device_identifier(self) -> str:
+        raise NotImplementedError
+
+
+class IdegisSensor(_IdegisSensorBase, CoordinatorEntity[IdegisCloudMitmCoordinator]):
     def __init__(
         self,
         coordinator: IdegisCloudMitmCoordinator,
@@ -219,15 +296,33 @@ class IdegisSensor(CoordinatorEntity[IdegisCloudMitmCoordinator], SensorEntity):
         self._entry_id = entry_id
         self._attr_unique_id = f"{entry_id}_{description.key}"
 
+    def _device_identifier(self) -> str:
+        return (self.coordinator.data or {}).get("device_id") or self._entry_id
+
     @property
-    def device_info(self) -> DeviceInfo:
-        data = self.coordinator.data or {}
-        return DeviceInfo(
-            identifiers={(DOMAIN, data.get("device_id") or self._entry_id)},
-            manufacturer=MANUFACTURER,
-            model=MODEL_DEFAULT,
-            name="Idegis chlorinator",
-        )
+    def native_value(self) -> Any:
+        if self.coordinator.data is None:
+            return None
+        return self.entity_description.value_fn(self.coordinator.data)
+
+
+class IdegisCostSensor(_IdegisSensorBase, CoordinatorEntity[IdegisCostCoordinator]):
+    """Fed by IdegisCostCoordinator — unavailable until a pump_power_entity
+    is configured, see sensor.py's COST_SENSORS comment."""
+
+    def __init__(
+        self,
+        coordinator: IdegisCostCoordinator,
+        description: IdegisSensorDescription,
+        entry_id: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._entry_id = entry_id
+        self._attr_unique_id = f"{entry_id}_{description.key}"
+
+    def _device_identifier(self) -> str:
+        return self._entry_id
 
     @property
     def native_value(self) -> Any:

@@ -25,8 +25,9 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .alerts import AlertEngine, alert_config_from_options
 from .cloud_proxy import register_views
+from .config_flow import OPT_GRID_POWER_ENTITY, OPT_PUMP_POWER_ENTITY
 from .const import CONF_MODE, DOMAIN, MODE_CLOUD_MITM
-from .coordinator import IdegisCloudMitmCoordinator
+from .coordinator import IdegisCloudMitmCoordinator, IdegisCostCoordinator
 from .notify_dispatch import dispatch_new_alerts
 from .panel import async_register_panel
 from .state import IdegisState
@@ -69,7 +70,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    cost_coordinator = IdegisCostCoordinator(
+        hass,
+        pump_entity=entry.options.get(OPT_PUMP_POWER_ENTITY) or "",
+        grid_entity=entry.options.get(OPT_GRID_POWER_ENTITY) or None,
+        cloud_mitm_coordinator=coordinator,
+    )
+    await cost_coordinator.async_config_entry_first_refresh()
+
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "cloud_mitm": coordinator,
+        "cost": cost_coordinator,
+    }
 
     await async_register_panel(hass)
 

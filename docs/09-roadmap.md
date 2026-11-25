@@ -133,15 +133,35 @@ JSONL store).
   (`target_production_pct=100`, `chlorine_demand_ppm_per_day=0.25`,
   `min_turnovers_per_day=0.5`, `net_n_clean_installed=True`), which
   computes to ~56 min/day — a test pins this to the 45-65 min band.
-- [ ] **Not wired to entities yet.** Both modules are pure logic + tests
-  only; neither is called from `sensor.py`, the coordinator, or exposed
-  in `config_flow`/`options_flow`. Wiring `cost.py` needs an options_flow
-  step to pick the pump-power and (optional) grid-power entities and a
-  way to fetch their HA history; wiring `recommendation.py` needs the
-  same calibrated numbers to become overridable options instead of
-  hardcoded module constants — **Sergio should confirm or correct the
-  calibrated defaults above before they're exposed anywhere he'd act on
-  them for real automations.**
+- [x] **Wired to entities (iteration 6).** `history_glue.py`: thin HA
+  glue — fetches 24h/7d/30d history for the configured
+  `pump_power_entity` (and optional `grid_power_entity`) via
+  `homeassistant.components.recorder.history.get_significant_states`,
+  adapts `State` objects into the plain dicts `cost.py` expects, and
+  calls the pure functions. `IdegisCostCoordinator` (coordinator.py)
+  polls this every 15 min — independent of the chlorinator's own push
+  updates, since it depends on the pump entity's history, not on
+  anything the chlorinator reports. New sensors in `sensor.py`:
+  `recommended_filtration_minutes_today`, `filtration_cost_24h/7d/30d`,
+  `filtration_solar_pct_30d`. `config_flow.py`'s options flow gained
+  `pump_power_entity`/`grid_power_entity` (optional `EntitySelector`s,
+  domain `sensor`, device_class `power`).
+- [ ] **Known rough edge**: the recommendation sensor doesn't actually
+  need a pump entity (only the live temperature), but
+  `IdegisCostCoordinator._async_update_data` currently returns `None`
+  entirely — recommendation included — until `pump_power_entity` is
+  set, coupling the two features for simplicity. Worth decoupling if
+  Sergio wants the recommendation available before wiring up energy
+  cost.
+- [ ] **Still not re-confirmed with Sergio**: the calibrated
+  `recommendation.py` defaults (~56 min/day) are now reachable from a
+  real sensor for the first time — he should look at the number once
+  it has real pump history behind it before using it in an automation.
+- [ ] `history_glue.py` has no dedicated unit test (same tradeoff as
+  `cloud_proxy.py`/`panel.py`: it's pure HA-history-fetch plumbing, not
+  logic). `tests/test_component_smoke.py` covers the "no pump entity
+  configured yet -> sensors exist but stay `unknown`" path; a real
+  recorder-backed history fixture is a further test to add.
 
 ### Phase ε — native panel (clean UI, no Lovelace)
 

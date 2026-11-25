@@ -145,7 +145,7 @@ async def test_alert_dispatches_to_notify_service(hass):  # noqa: ANN001
 
     from custom_components.idegis_astralpool.const import DOMAIN as IDEGIS_DOMAIN
 
-    coordinator = hass.data[IDEGIS_DOMAIN][entry.entry_id]
+    coordinator = hass.data[IDEGIS_DOMAIN][entry.entry_id]["cloud_mitm"]
     # Simulate a low-pH reading arriving through the coordinator, the
     # same way push_update() would after a real cloud-MITM write.
     coordinator.async_set_updated_data(
@@ -161,3 +161,22 @@ async def test_alert_dispatches_to_notify_service(hass):  # noqa: ANN001
 
     notifications = hass.states.async_entity_ids("persistent_notification")
     assert notifications, "pH alert did not reach persistent_notification.create"
+
+
+async def test_cost_sensors_created_but_unavailable_without_pump_entity(hass):  # noqa: ANN001
+    """phase delta glue (history_glue.py + IdegisCostCoordinator): the new
+    cost/recommendation entities must exist even with no pump_power_entity
+    configured yet, staying unavailable rather than erroring — same
+    honesty-over-fake-data pattern as the filtration alert check."""
+    entry = MockConfigEntry(domain=DOMAIN, data={"mode": "cloud_mitm"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.idegis_chlorinator_recommended_filtration_minutes_today")
+    assert state is not None
+    assert state.state == "unknown"  # no pump_power_entity configured yet
+
+    cost_state = hass.states.get("sensor.idegis_chlorinator_filtration_cost_24h")
+    assert cost_state is not None
+    assert cost_state.state == "unknown"

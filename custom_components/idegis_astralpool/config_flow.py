@@ -24,6 +24,7 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
+from homeassistant.helpers import selector
 
 from .alerts import (
     DEFAULT_FILTRATION_MIN_COVERAGE_PCT,
@@ -34,6 +35,9 @@ from .alerts import (
     DEFAULT_SESSION_STALE_MINUTES,
 )
 from .const import CONF_MODE, DOMAIN, MODE_CLOUD_MITM
+
+OPT_PUMP_POWER_ENTITY = "pump_power_entity"
+OPT_GRID_POWER_ENTITY = "grid_power_entity"
 
 OPT_PH_ENABLED = "ph_enabled"
 OPT_PH_MIN = "ph_min"
@@ -86,6 +90,16 @@ class IdegisOptionsFlow(OptionsFlow):
         opts = self._entry.options
         schema = vol.Schema(
             {
+                vol.Optional(
+                    OPT_PUMP_POWER_ENTITY, default=opts.get(OPT_PUMP_POWER_ENTITY, "")
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                ),
+                vol.Optional(
+                    OPT_GRID_POWER_ENTITY, default=opts.get(OPT_GRID_POWER_ENTITY, "")
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                ),
                 vol.Required(OPT_PH_ENABLED, default=opts.get(OPT_PH_ENABLED, False)): bool,
                 vol.Required(OPT_PH_MIN, default=opts.get(OPT_PH_MIN, DEFAULT_PH_MIN)): vol.Coerce(float),
                 vol.Required(OPT_PH_MAX, default=opts.get(OPT_PH_MAX, DEFAULT_PH_MAX)): vol.Coerce(float),

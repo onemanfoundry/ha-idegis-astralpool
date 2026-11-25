@@ -13,9 +13,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Idegis / AstralPool — alertas",
-        "description": "Elige qué condiciones deben disparar una alerta, y el servicio notify.* al que enviarla (p. ej. notify.telegram_jarvis, notify.mobile_app_telefono). Deja notify_service vacío para desactivar el envío sin dejar de ver avisos en el log.",
+        "title": "Idegis / AstralPool — alertas y energía",
+        "description": "Elige qué condiciones deben disparar una alerta, y el servicio notify.* al que enviarla (p. ej. notify.telegram_jarvis, notify.mobile_app_telefono). Deja notify_service vacío para desactivar el envío sin dejar de ver avisos en el log. Las entidades de potencia de bomba/red son opcionales y alimentan los sensores de coste y recomendación de filtración.",
         "data": {
+          "pump_power_entity": "Sensor de potencia de la bomba de filtración",
+          "grid_power_entity": "Sensor de potencia de red de la casa (opcional, para reparto solar)",
           "ph_enabled": "Alertar si el pH está fuera de rango",
           "ph_min": "pH mínimo",
           "ph_max": "pH máximo",
@@ -48,7 +50,12 @@
       "last_session_production_avg": {"name": "Última sesión producción media"},
       "last_session_duration": {"name": "Última sesión duración"},
       "last_session_n_writes": {"name": "Última sesión escrituras"},
-      "last_session_end": {"name": "Última sesión fin"}
+      "last_session_end": {"name": "Última sesión fin"},
+      "recommended_filtration_minutes_today": {"name": "Minutos de filtración recomendados hoy"},
+      "filtration_cost_24h": {"name": "Coste filtración (24h)"},
+      "filtration_cost_7d": {"name": "Coste filtración (7d)"},
+      "filtration_cost_30d": {"name": "Coste filtración (30d)"},
+      "filtration_solar_pct_30d": {"name": "Reparto solar filtración (30d)"}
     }
   }
 }

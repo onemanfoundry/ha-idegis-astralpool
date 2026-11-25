@@ -4,6 +4,57 @@ Diario cronológico inverso. Entradas más recientes arriba. Castellano.
 
 ---
 
+## 2026-11-25 (iteración 6) — cost.py/recommendation.py conectados a datos reales (fase δ)
+
+Sexta iteración. Primero intenté el frente A (revisión de logs reales en
+CT104): `ssh zeratul "pct exec 104 -- ..."` reveló que **CT104 (ollama /
+jarvis stack) está parado** (`pct list` → `stopped`), no en ejecución.
+Arrancarlo solo para leer `/opt/piscina/logs/` tocaría el stack de Jarvis
+en marcha sin que Sergio lo haya pedido para esta tarea — lo dejo
+documentado aquí en vez de arrancarlo por mi cuenta. **Pendiente para
+Sergio**: confirmar si CT104 está parado a propósito o si conviene
+arrancarlo para la revisión de logs pendiente del objetivo 5.
+
+Pivotado al frente B: conectar `cost.py`/`recommendation.py` a entidades
+reales.
+
+- `history_glue.py` nuevo: capa fina que pide a `homeassistant.components.
+  recorder.history.get_significant_states` el histórico 24h/7d/30d de la
+  entidad de potencia de la bomba (y opcionalmente de la de red de la
+  casa), adapta los `State` de HA al dict plano que ya esperaba
+  `cost.py`, y llama a las funciones puras existentes. Añade también el
+  cálculo de `solar_pct` (no lo devolvía `cost_breakdown` directamente).
+- `IdegisCostCoordinator` nuevo en `coordinator.py`: a diferencia del
+  coordinador del clorador (alimentado por push), este sondea cada 15
+  min porque depende del histórico de la entidad de potencia, no de
+  nada que reporte el clorador. Devuelve `None` (no error) si no hay
+  `pump_power_entity` configurada — los sensores quedan en "unknown",
+  no en error.
+- 5 sensores nuevos en `sensor.py`: minutos de filtración recomendados
+  hoy, coste de filtración 24h/7d/30d, reparto solar 30d.
+- `config_flow.py`: el options_flow gana dos `EntitySelector` opcionales
+  (`pump_power_entity`, `grid_power_entity`, dominio `sensor`,
+  device_class `power`).
+- Traducciones en/es actualizadas para los campos y sensores nuevos.
+- Smoke test nuevo: con el flujo configurado sin entidad de bomba, los
+  sensores nuevos existen pero su estado es `unknown` (no fallan, no
+  inventan datos) — mismo patrón de honestidad que la alerta de
+  filtración.
+- **Rugosidad documentada**: la recomendación de minutos no necesita en
+  realidad la entidad de bomba (solo la temperatura en vivo), pero por
+  simplicidad ambas funciones comparten el mismo coordinador y ambas
+  quedan sin datos hasta que se configure `pump_power_entity`. A
+  desacoplar si Sergio quiere ver la recomendación antes de configurar
+  el coste.
+- Manifest → `0.6.0`. Suite completa: 85 tests locales en verde + 1
+  skip esperado (smoke de HA real).
+
+Pendiente próxima iteración: retomar la revisión de logs reales (frente
+A) si Sergio confirma que puedo arrancar CT104, o seguir con el panel
+E2E / exponer gráficas e histórico en el panel nativo.
+
+---
+
 ## 2026-11-25 (iteración 5) — Notificaciones configurables (fase ζ)
 
 Quinta iteración. Hecho:
