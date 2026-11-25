@@ -84,6 +84,46 @@ eléctrico/recomendación de filtración (fase γ/ζ).
 
 ---
 
+## 2026-11-25 (iteración 3) — Panel nativo en el sidebar (fase ε, versión base)
+
+Tercera iteración. Hecho:
+
+- `panel.py` + `panel_assets/idegis-astralpool-panel.js`: panel propio
+  registrado en el sidebar de HA vía `panel_custom` ("Idegis /
+  AstralPool", icono `mdi:pool`). **No** es un port del `app.js` del
+  add-on (que hacía fetch a su propia REST API): es un panel HA normal,
+  lee `hass.states` directamente igual que cualquier tarjeta Lovelace —
+  cero llamadas de red propias. El JS se sirve vía una
+  `HomeAssistantView` dedicada (no `register_static_path`, para no
+  depender de una API que ha cambiado de firma entre versiones de HA).
+  Paleta oscura "cómic" igual que el dashboard del add-on / el estilo de
+  `ha-energy-optimizer`.
+- Decisión explícita de alcance: esta primera versión del panel solo
+  muestra lo que `sensor.py` ya expone (lecturas en vivo + medias de la
+  última sesión + diagnóstico). Nada de gráficas/histórico/coste/
+  recomendación todavía — eso necesita que la lógica de `cost_breakdown`
+  y `_compute_recommendation` del add-on esté portada primero (fase γ),
+  documentado como gap explícito en el roadmap en vez de simularlo.
+- `manifest.json` añade dependencia `panel_custom` → `0.3.0`.
+- `tests/test_component_smoke.py` ampliado: verifica que la vista del
+  JS del panel y el registro en `frontend_panels` existen tras el setup.
+  Sigue sin poder correr en local (no hay `homeassistant` instalado en
+  este NAS) — se validará de verdad en el job `component` de CI.
+- Validado: sintaxis del JS con `node --check` (OK), `ruff` y
+  `py_compile` sobre el Python nuevo (OK), suite completa 55/55 + 1
+  skip, `tests/validate_repo.py` en verde.
+
+Riesgo conocido pendiente de confirmar en el primer run real de CI: la
+firma exacta de `panel_custom.async_register_panel()` puede variar entre
+versiones de HA; si el job `component` falla por eso, es la primera cosa
+a mirar.
+
+Pendiente próxima iteración: empezar a portar `cost_breakdown` (coste
+eléctrico con atribución solar) y `_compute_recommendation` (filtración)
+del add-on al componente, con sus tests de regresión sintéticos.
+
+---
+
 ## 2026-06-02 — Add-on v0.1.0 desplegado en HA prod + switchover desde CT104
 
 Sesión final del día. Sergio prioriza ir directo al setup en add-on para

@@ -113,16 +113,31 @@ JSONL store).
 
 ### Phase ε — native panel (clean UI, no Lovelace)
 
-- Register a `panel_custom` sidebar panel from `__init__.py`, serving
-  assets via `hass.http.register_static_path` / a dedicated
-  `HomeAssistantView`.
-- Port the capturer add-on's dashboard (`addon/rootfs/opt/idegis/static/`
-  — charts, session history, EN/ES i18n already built for v0.6.12) as the
-  base of the panel instead of rewriting it from scratch.
-- Panel reads live data straight from the coordinator/entities, no HTTP
-  round-trip to a separate backend.
-- E2E tests: extend `tests/test_dashboard_e2e.py`'s Playwright coverage to
-  the new panel.
+- [x] `panel.py`: registers a `panel_custom` sidebar panel from
+  `__init__.py` ("Idegis / AstralPool", `mdi:pool`). The web component's
+  JS module is served through a dedicated `HomeAssistantView`
+  (`panel.py`'s `IdegisPanelJSView`) rather than
+  `hass.http.register_static_path`, so it's read through code the smoke
+  suite exercises instead of a static-path API whose signature drifts
+  across HA core versions.
+- [x] `panel_assets/idegis-astralpool-panel.js`: a **plain HA custom
+  panel**, not a port of the add-on's dashboard fetch-based JS. It reads
+  `hass.states` directly (same mechanism any Lovelace card uses) — no
+  HTTP round-trip of its own. Dark "comic" palette matched to the addon
+  dashboard / `ha-energy-optimizer` for visual consistency.
+- [x] `tests/test_component_smoke.py` extended: asserts the panel JS view
+  and the `frontend_panels` registration both exist after setup.
+- [ ] **Scope gap, tracked explicitly**: this first version only shows
+  what `sensor.py` currently has (live readings + last-session
+  averages + diagnostics) — no charts, no multi-session history, no
+  electricity cost, no filtration recommendation. Those need their
+  backend logic ported first (phase γ's `cost_breakdown` /
+  `_compute_recommendation`) before the panel can show them; the add-on
+  dashboard's chart code (`app.js`'s SVG rendering) can then be reused
+  once there is a data source to feed it from inside the component.
+- [ ] E2E tests: extend `tests/test_dashboard_e2e.py`'s Playwright
+  coverage to the new panel once it has more than static-looking cards
+  (worth doing once charts land, not for this bare version).
 
 ### Phase ζ — notification routing
 

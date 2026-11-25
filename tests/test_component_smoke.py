@@ -75,6 +75,13 @@ async def test_setup_entry_registers_views_and_entities(hass):  # noqa: ANN001
     ]
     assert found, "cloud-MITM receiver views were not registered"
 
+    panel_js_routes = [
+        r for r in hass.http.app.router.routes()
+        if "idegis_astralpool/panel" in str(r.resource)
+    ]
+    assert panel_js_routes, "panel JS view was not registered"
+    assert "idegis_astralpool" in hass.data.get("frontend_panels", {})
+
 
 async def test_unload_entry(hass):  # noqa: ANN001
     entry = MockConfigEntry(domain=DOMAIN, data={"mode": "cloud_mitm"})
