@@ -179,17 +179,36 @@ JSONL store).
   dashboard / `ha-energy-optimizer` for visual consistency.
 - [x] `tests/test_component_smoke.py` extended: asserts the panel JS view
   and the `frontend_panels` registration both exist after setup.
-- [ ] **Scope gap, tracked explicitly**: this first version only shows
-  what `sensor.py` currently has (live readings + last-session
-  averages + diagnostics) — no charts, no multi-session history, no
-  electricity cost, no filtration recommendation. Those need their
-  backend logic ported first (phase δ's `cost_breakdown` /
-  `_compute_recommendation`) before the panel can show them; the add-on
-  dashboard's chart code (`app.js`'s SVG rendering) can then be reused
-  once there is a data source to feed it from inside the component.
-- [ ] E2E tests: extend `tests/test_dashboard_e2e.py`'s Playwright
-  coverage to the new panel once it has more than static-looking cards
-  (worth doing once charts land, not for this bare version).
+- [x] **Scope gap closed (iteration 7)**: the panel now also shows
+  24h history sparklines (pH/salinity/water temperature, pure inline
+  SVG — no charting library, fetched once via `hass.callApi("GET",
+  "history/period/...")`, the same REST endpoint Lovelace's own
+  history-graph card uses, refreshed at most every 5 min), the five
+  cost/recommendation sensors wired in phase δ, and an "active alerts"
+  section reading HA's own `persistent_notification.*` entities (the
+  same sink `notify_dispatch.py` writes to when routed to
+  `persistent_notification.create`).
+- [x] `tests/test_panel_assets.py` (new): pure text/syntax checks on the
+  JS file (no `homeassistant` needed, unlike the rest of the smoke
+  suite) — guards against an accidental truncation or a silently
+  removed section; `node --check` for syntax if `node` is on PATH
+  (skips otherwise).
+- [ ] **Known gap, deliberate**: there is no dedicated "active alerts"
+  entity/list from `alerts.py`'s `AlertEngine` — the panel infers it by
+  scanning `persistent_notification.*` state for ones that look
+  Idegis-related. Works for the one notify route this project currently
+  wires (`persistent_notification.create`), but wouldn't show an alert
+  routed to e.g. a Telegram-only `notify_service` with no
+  persistent_notification mirror. A proper fix would have `AlertEngine`
+  expose its own `_active` set through an entity (e.g. a
+  `binary_sensor` per alert id) rather than relying on the dispatch
+  target.
+- [ ] E2E tests: `tests/test_dashboard_e2e.py` still targets the *old
+  add-on's* dashboard (`addon/rootfs/opt/idegis/static/`), not this
+  native panel — left untouched since it's Sergio's own in-progress file
+  (uncommitted changes predating this loop). A Playwright suite for the
+  native panel, if wanted, should be a new file, not an edit to that
+  one.
 
 ### Phase ζ — notification routing
 

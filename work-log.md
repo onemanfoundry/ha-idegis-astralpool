@@ -4,6 +4,50 @@ Diario cronológico inverso. Entradas más recientes arriba. Castellano.
 
 ---
 
+## 2026-11-25 (iteración 7) — panel nativo: gráficas, coste y alertas (fase ε)
+
+Séptima iteración. Cierro el hueco visual más visible del objetivo 3 de
+Sergio ("interfaz limpia y atractiva... con gráficas, histórico,
+alertas").
+
+- `panel_assets/idegis-astralpool-panel.js` ampliado:
+  - **24h de histórico** de pH/salinidad/temperatura como sparklines SVG
+    nativos (sin librerías, mismo criterio "cero dependencias" del
+    resto del panel). Se piden una vez vía `hass.callApi("GET",
+    "history/period/...")` (el mismo endpoint REST que usa la tarjeta
+    history-graph de Lovelace) y se refrescan como máximo cada 5 min —
+    es la única llamada de red propia de todo el panel.
+  - Los **5 sensores de coste/recomendación** de la iteración 6, ya
+    pintados (minutos recomendados hoy, coste 24h/7d/30d, reparto
+    solar).
+  - Sección de **alertas activas**: lee las entidades
+    `persistent_notification.*` de HA (el mismo destino al que
+    `notify_dispatch.py` escribe cuando se enruta a
+    `persistent_notification.create`) y las muestra como tarjetas rojas.
+- `tests/test_panel_assets.py` nuevo (7 tests): comprueba que el JS
+  define el custom element, que las secciones nuevas siguen presentes
+  (guarda contra un truncado accidental) y, si `node` está disponible,
+  que el fichero es sintácticamente válido (`node --check`).
+- **Gap documentado a propósito**: la sección de alertas activas
+  detecta solo lo que pasa por `persistent_notification.create` —
+  `AlertEngine` no expone su propio estado como entidad, así que una
+  alerta enrutada solo a Telegram no aparecería aquí. Arreglo correcto
+  pendiente: una entidad (p. ej. `binary_sensor` por tipo de alerta)
+  alimentada directamente por `AlertEngine._active`.
+- `tests/test_dashboard_e2e.py` (Playwright) sigue apuntando al
+  dashboard del add-on viejo, no al panel nativo — lo dejo intacto
+  porque es un fichero de Sergio con cambios sin commitear previos a
+  este loop; si se quiere E2E del panel nativo, mejor un fichero nuevo.
+- Suite completa: 92 tests en verde + 1 skip esperado (smoke de HA
+  real).
+
+Pendiente próxima iteración: revisión de logs reales (bloqueada, ver
+iteración 6 — CT104 parado, pendiente confirmación de Sergio), o
+decidir con Sergio si merece la pena una entidad dedicada para alertas
+activas.
+
+---
+
 ## 2026-11-25 (iteración 6) — cost.py/recommendation.py conectados a datos reales (fase δ)
 
 Sexta iteración. Primero intenté el frente A (revisión de logs reales en
