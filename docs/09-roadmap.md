@@ -258,9 +258,30 @@ JSONL store).
 ### Phase η — polish and HACS default
 
 - Add mode C as fallback.
-- Full translations (en, es).
-- Unit tests + GitHub Actions CI.
-- Submit to HACS default repositories.
+- [x] Full translations (en, es) — `strings.json`/`translations/{en,es}.json`
+  cover config flow, options flow, and every entity name.
+- [x] Unit tests + GitHub Actions CI — 93 local tests (pure logic) + a
+  `component` CI job running the real-HA smoke suite.
+- **HACS readiness check (iteration 8)**:
+  - [x] `hacs.json` present and valid (`render_readme`, `homeassistant`
+    min version, `country`, `hide_default_branch: true`,
+    `zip_release: false`).
+  - [x] `LICENSE` (MIT) and `LICENSE-docs` (CC-BY-SA 4.0) present.
+  - [x] `repository.yaml` present.
+  - [x] README at repo root.
+  - [ ] **Blocking gap found, not fixed here**: `hide_default_branch:
+    true` + `zip_release: false` means HACS installs from **GitHub
+    releases**, not the default branch. The only tag in the repo is
+    `v0.0.9` (the pre-rewrite prototype) — there is no release matching
+    the current `0.7.0` custom_component. Cutting a GitHub release is a
+    public, visible action (shows up in the repo's Releases tab,
+    potentially triggers notifications for anyone watching), so it's
+    left for Sergio to request explicitly rather than done
+    autonomously by this loop.
+  - [ ] Submit to HACS default repositories — out of scope until the
+    above release gap is closed and Sergio has used the integration for
+    real (HACS default submission expects some evidence of real-world
+    use, not just passing tests).
 
 ## Add-on deprecation plan
 

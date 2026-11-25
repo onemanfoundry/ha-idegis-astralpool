@@ -47,14 +47,25 @@ para reflejar el nuevo comportamiento.
 - Manifest → `0.7.0`. Suite completa: 93 tests locales en verde + 1
   skip esperado.
 
-Sigue bloqueada la revisión de logs reales (CT104 parado, ver
-iteración 6) y pendiente el visto bueno de Sergio a los defaults
-calibrados de filtración. Con A y B cerrados, los huecos documentados
-y no bloqueados que quedan son menores (test dedicado de
-`history_glue.py` con fixture de recorder real, y comprobar
-preparación para HACS). A partir de aquí, el valor de seguir puliendo
-detalles sin su input empieza a ser bajo — lo dejo anotado para la
-próxima iteración si procede, o para pararme y esperar feedback suyo.
+Revisé también (C) la preparación para HACS: `hacs.json`, `LICENSE`,
+`repository.yaml` y README están en orden, pero hay un hueco real:
+con `hide_default_branch: true` + `zip_release: false`, HACS instala
+desde **releases de GitHub**, y el único tag del repo es `v0.0.9` (el
+prototipo previo a la reescritura completa) — no hay ninguna release
+que corresponda a la versión actual (`0.7.0`). Cortar una release es
+una acción pública y visible (aparece en la pestaña Releases del repo),
+así que no la he creado por mi cuenta — queda documentada en
+`docs/09-roadmap.md` fase η a la espera de que Sergio la pida
+explícitamente.
+
+**Decisión de parar el loop aquí**: con A, B y la revisión de HACS
+cerradas, lo que queda sin hacer son exactamente las dos cosas
+bloqueadas desde la iteración 6 (logs reales en CT104, visto bueno de
+los defaults de filtración) más una acción pública que requiere su
+confirmación (cortar una release). Seguir iterando sin su input ahora
+mismo sería pulir detalles de rendimiento marginal. Paro el loop
+dinámico y lo dejo a la espera de que Sergio revise el estado y decida
+los siguientes pasos.
 
 ---
 
