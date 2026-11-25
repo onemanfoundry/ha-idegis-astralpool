@@ -4,6 +4,33 @@ Diario cronológico inverso. Entradas más recientes arriba. Castellano.
 
 ---
 
+## 2026-11-25 (iteración 9) — respuesta de Sergio tras parar el loop: defaults de filtración reales + CT104 confirmado
+
+Sergio respondió a los tres puntos que dejé pendientes al parar el loop
+dinámico tras la iteración 8:
+
+- **CT104 parado a propósito** — hace de servidor de juegos. No tocarlo,
+  queda descartado revisar logs reales ahí mientras siga en ese rol.
+- **Defaults reales de filtración confirmados**: no son los ~56 min/día
+  calibrados por química (`recommendation.py`'s `compute_recommendation`),
+  sino una política estacional mucho más simple: **1h diaria en verano,
+  1h semanal en invierno**. Implementado como
+  `compute_seasonal_recommendation(today)` en `recommendation.py`
+  (verano = junio-septiembre, sesión semanal de invierno fija en lunes —
+  ambos supuestos razonables, no especificados por Sergio al detalle;
+  avisar si quiere ajustarlos). `history_glue.compute_recommendation_now`
+  ahora llama a esta función en vez del modelo de química. El modelo de
+  química (`RecommendationInputs`/`compute_recommendation`) se mantiene
+  en el módulo solo por los tests de paridad con la fórmula del add-on
+  (`tests/test_component_recommendation.py`) — ya no alimenta el sensor.
+- **Commitear cuando esté listo**: hecho tras pasar la suite completa
+  (95 passed, 2 skipped).
+
+Tests nuevos: `test_seasonal_summer_is_one_hour_daily`,
+`test_seasonal_winter_is_one_hour_on_mondays_only`. Versión bump a 0.7.1.
+
+---
+
 ## 2026-11-25 (iteración 8) — desacoplo recomendación/coste + alertas activas como entidad propia
 
 Octava iteración. Dos huecos documentados de iteraciones anteriores,

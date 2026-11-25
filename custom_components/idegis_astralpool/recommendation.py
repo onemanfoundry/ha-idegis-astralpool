@@ -5,27 +5,27 @@ Pure port of ``addon/rootfs/opt/idegis/capturer.py``'s
 import, same pattern as ``state.py``/``cost.py``), so it's unit-testable
 without installing HA.
 
-Defaults are **not** copied verbatim from the add-on's shipped
-``config.yaml`` (``target_production_pct: 40``,
-``chlorine_demand_ppm_per_day: 0.6``, ``min_turnovers_per_day: 0.75``,
-``net_n_clean_installed: false``) — those are the inputs documented as
-*already known to overshoot* for this installation (project memory
-``feedback_filtration_defaults_overshoot``: they yield ~139 min/day,
-rejected by Sergio in favour of ~55 min/day, see
-``project_filtration_target``). This module's defaults instead encode
-the calibrated reading from that memory for Sergio's actual install
-(Neo2-24PH/S, 37 m3 indoor covered pool, Net'N Clean installed):
-``target_production_pct=100``, ``chlorine_demand_ppm_per_day=0.25``,
-``min_turnovers_per_day=0.5``, ``net_n_clean_installed=True`` — which
-compute to ~56 min/day (turnover-driven), matching the ~55 min/day
-Sergio settled on. These become the integration's config/options_flow
-defaults in a later iteration; they are not yet exposed anywhere for
-Sergio to override, so flag it to him before trusting the number for
-real automations.
+``compute_recommendation``/``RecommendationInputs`` below are the
+chemistry/turnover model (chlorine-demand vs. hydraulic-turnover
+minutes) and are kept, with their original calibrated defaults, purely
+for the byte-for-byte parity tests against the add-on's formula
+(``tests/test_component_recommendation.py``) — they are **no longer
+what the integration recommends day to day**.
+
+Sergio confirmed (2026-11-25) the actual policy he wants for this
+installation is much simpler than the chemistry model: **1h of daily
+filtration in summer, 1h once a week in winter** — not the
+chemistry-calibrated ~55 min/day this module used to expose on the
+sensor. ``compute_seasonal_recommendation`` implements that policy and
+is what ``history_glue.compute_recommendation_now`` actually calls.
+Season boundary (June-September = summer) and the fixed winter weekly
+session day (Monday) are reasonable defaults, not something Sergio
+specified explicitly — flag to him if either needs adjusting.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 # Calibrated defaults for this installation — see module docstring.
 POOL_VOLUME_M3 = 37.0
@@ -109,4 +109,36 @@ def compute_recommendation(inputs: RecommendationInputs) -> dict:
         "effective_turnovers_per_day": round(effective_turnovers, 3),
         "daily_chlorine_demand_g": round(daily_demand_g, 1),
         "cell_output_g_per_min": round(cl_per_min, 3),
+    }
+
+
+# Seasonal policy (confirmed by Sergio 2026-11-25) — see module docstring.
+SUMMER_MONTHS = frozenset({6, 7, 8, 9})
+SUMMER_DAILY_MINUTES = 60
+WINTER_WEEKLY_MINUTES = 60
+WINTER_WEEKLY_SESSION_WEEKDAY = 0  # Monday
+
+
+def is_summer(today: date) -> bool:
+    return today.month in SUMMER_MONTHS
+
+
+def compute_seasonal_recommendation(today: date) -> dict:
+    """1h/day in summer, a single 1h session on Mondays in winter
+    (0 the other winter days) — Sergio's confirmed policy, replacing
+    the chemistry-model calibration as the sensor-facing number."""
+    summer = is_summer(today)
+    if summer:
+        minutes = SUMMER_DAILY_MINUTES
+        driver = "seasonal_summer_daily"
+    elif today.weekday() == WINTER_WEEKLY_SESSION_WEEKDAY:
+        minutes = WINTER_WEEKLY_MINUTES
+        driver = "seasonal_winter_weekly_session"
+    else:
+        minutes = 0
+        driver = "seasonal_winter_rest_day"
+    return {
+        "recommended_minutes_today": minutes,
+        "driver": driver,
+        "season": "summer" if summer else "winter",
     }

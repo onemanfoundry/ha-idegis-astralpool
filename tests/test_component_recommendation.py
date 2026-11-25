@@ -127,3 +127,31 @@ def test_zero_cell_capacity_does_not_divide_by_zero(rec_mod):
     inputs = rec_mod.RecommendationInputs(cell_g_h=0)
     calc = rec_mod.compute_recommendation(inputs)
     assert calc["chlorine_demand_minutes"] == 0
+
+
+def test_seasonal_summer_is_one_hour_daily(rec_mod):
+    import datetime
+
+    for month in (6, 7, 8, 9):
+        calc = rec_mod.compute_seasonal_recommendation(datetime.date(2026, month, 15))
+        assert calc["recommended_minutes_today"] == 60
+        assert calc["season"] == "summer"
+        assert calc["driver"] == "seasonal_summer_daily"
+
+
+def test_seasonal_winter_is_one_hour_on_mondays_only(rec_mod):
+    import datetime
+
+    monday = datetime.date(2026, 1, 5)
+    assert monday.weekday() == 0
+    calc = rec_mod.compute_seasonal_recommendation(monday)
+    assert calc["recommended_minutes_today"] == 60
+    assert calc["season"] == "winter"
+    assert calc["driver"] == "seasonal_winter_weekly_session"
+
+    for offset in range(1, 7):
+        other_day = monday + datetime.timedelta(days=offset)
+        calc = rec_mod.compute_seasonal_recommendation(other_day)
+        assert calc["recommended_minutes_today"] == 0
+        assert calc["season"] == "winter"
+        assert calc["driver"] == "seasonal_winter_rest_day"

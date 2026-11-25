@@ -23,7 +23,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant, State
 
 from .cost import DEFAULT_TARIFF, cost_breakdown
-from .recommendation import RecommendationInputs, compute_recommendation
+from .recommendation import compute_seasonal_recommendation
 
 
 def _states_to_dicts(states: list[State]) -> list[dict[str, Any]]:
@@ -80,6 +80,8 @@ async def async_compute_cost(
 
 def compute_recommendation_now(temp_c: float | None) -> dict[str, Any]:
     """Thin wrapper so callers don't need to import recommendation.py
-    directly — kept HA-aware only in that it accepts the live temperature
-    reading, the only piece of state this needs from the coordinator."""
-    return compute_recommendation(RecommendationInputs(temp_c=temp_c))
+    directly. ``temp_c`` is accepted for backwards-compatible call sites
+    but no longer used: the recommendation is now Sergio's seasonal
+    policy (1h/day summer, 1h/week winter), not the temperature-aware
+    chemistry model — see recommendation.py's module docstring."""
+    return compute_seasonal_recommendation(datetime.now().date())

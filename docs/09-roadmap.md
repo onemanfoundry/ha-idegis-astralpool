@@ -153,10 +153,19 @@ JSONL store).
   `None` only until `pump_power_entity` is actually set.
   `recommended_filtration_minutes_today` now has a real value from
   first setup, with no energy wiring required.
-- [ ] **Still not re-confirmed with Sergio**: the calibrated
-  `recommendation.py` defaults (~56 min/day) are now reachable from a
-  real sensor for the first time — he should look at the number once
-  it has real pump history behind it before using it in an automation.
+- [x] **Resolved with Sergio (2026-11-25)**: the chemistry-calibrated
+  ~56 min/day default was never what he actually wanted running — he
+  confirmed the real policy is seasonal: **1h of daily filtration in
+  summer, 1h once a week in winter**. `recommendation.py` gained
+  `compute_seasonal_recommendation(today)` (summer = June-Sept, winter
+  weekly session fixed on Mondays — both reasonable defaults, not
+  something he specified down to the day/month, flag if he wants them
+  adjusted) and `history_glue.compute_recommendation_now` now calls
+  that instead of the chemistry model. The chemistry
+  model/`RecommendationInputs`/`compute_recommendation` stay in the
+  module only for the addon-formula parity tests
+  (`tests/test_component_recommendation.py`) — they no longer feed the
+  sensor.
 - [ ] `history_glue.py` has no dedicated unit test (same tradeoff as
   `cloud_proxy.py`/`panel.py`: it's pure HA-history-fetch plumbing, not
   logic). `tests/test_component_smoke.py` covers the "no pump entity
