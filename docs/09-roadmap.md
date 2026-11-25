@@ -70,14 +70,39 @@ switchover without Sergio's explicit go-ahead.
   `custom_components/idegis_astralpool/codec.py`, with a regression
   suite (`tests/test_component_codec.py`) pinned against the addon's
   copy and a real captured payload.
-- [ ] `cloud_proxy.py`: run the MITM receiver (`/interface/{read,write}.php`)
-  as an HA `HomeAssistantView`, so the integration needs no external
-  capturer process for mode A.
-- [ ] Coordinator fed from the in-process receiver instead of polling
-  `http://<capturer>:8765/api/idegis/state`.
-- [ ] Decoded fields surfaced as `sensor` / `binary_sensor` entities.
-- [ ] Single-mode config_flow (mode A only).
-- [ ] Manual install via "Custom repository" in HACS.
+- [x] `state.py`: HA-independent port of the addon's `State`/session
+  aggregation (sticky fields, session min/max/avg, idle close), unit
+  tested in `tests/test_component_state.py` without needing
+  `homeassistant` installed.
+- [x] `cloud_proxy.py`: the MITM receiver (`/interface/{read,write}.php`)
+  as two `HomeAssistantView`s (`requires_auth = False`) registered under
+  HA's own HTTP server at `/api/idegis_astralpool/interface/*`, so the
+  only thing the LAN DNS override / nginx vhost needs to point at is this
+  HA instance instead of the add-on's `:8765`. Still a transparent
+  reverse-proxy to the real Idegis cloud, same design as the addon.
+- [x] Coordinator (`coordinator.py`) is push-fed (`update_interval=None`,
+  `push_update()` called from the view) instead of polling an external
+  URL.
+- [x] Decoded fields surfaced as `sensor` / `binary_sensor` entities,
+  rewritten against the new state snapshot shape (old prototype's
+  `age_seconds`/`last_fields`/`pump_power_w`/etc. keys from the external
+  capturer's JSON API don't apply any more).
+- [x] Single-mode config_flow (mode A only, no external host/port to
+  configure since there's nothing external to probe any more).
+- [x] `tests/test_component_smoke.py`: first test that actually imports
+  and runs the custom_component against a real HA core
+  (`pytest-homeassistant-custom-component`) — config_flow, setup_entry,
+  view registration, entity creation, unload. New CI job `component` in
+  `.github/workflows/ci.yaml` runs it; nothing did before this.
+- [ ] Manual install via "Custom repository" in HACS (needs a tagged
+  release once phase β is otherwise feature-complete).
+
+Not ported yet from the addon (tracked for phase γ or later, see
+`state.py`'s module docstring): pump-power correlation / trusted-reading
+filtering (needs a live HA entity reference), and long-term on-disk
+history (the in-memory deque is enough for current sensors; long-term
+history should probably ride HA's own recorder instead of a bespoke
+JSONL store).
 
 ### Phase γ — feature parity with the Modbus map
 

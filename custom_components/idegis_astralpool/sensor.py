@@ -1,4 +1,12 @@
-"""Sensor platform — surfaces what we already have from path A capture."""
+"""Sensor platform, fed by IdegisState.snapshot() (see cloud_proxy.py).
+
+Live water readings (ph/salinity/temperature/production_percent) are the
+*point* values read straight off the sticky fields. Per
+feedback_idegis_use_session_avgs (project memory): the point value reads
+the device's internal stagnant chamber and gives falsely low pH —
+the "last session avg" sensors are the ones that should be trusted for
+automations/alerts, the live ones are for "what is it reading right now".
+"""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -28,15 +36,15 @@ class IdegisSensorDescription(SensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], Any]
 
 
-def _measure(d: dict[str, Any], key: str) -> Any:
-    """Live water reading, trusting the capturer's motor-on/time-averaged
-    value (capturer >= 0.6.6) and falling back to the raw sticky value for
-    older capturers. The raw block can read a stuck sensor floor while the
-    pump is off (pH pegged ~4.8), so trusted is always preferred."""
-    trusted = (d.get("trusted_measurements") or {}).get(key)
-    if isinstance(trusted, dict) and trusted.get("value") is not None:
-        return trusted["value"]
-    return (d.get("measurements") or {}).get(key, {}).get("value")
+def _live(d: dict[str, Any], key: str) -> Any:
+    return (d.get("live_measurements") or {}).get(key, {}).get("value")
+
+
+def _session(d: dict[str, Any], key: str, agg: str = "avg") -> Any:
+    return (
+        ((d.get("last_session") or {}).get("measurements") or {})
+        .get(key, {}).get(agg)
+    )
 
 
 SENSORS: tuple[IdegisSensorDescription, ...] = (
@@ -49,28 +57,12 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     IdegisSensorDescription(
-        key="age_seconds",
-        translation_key="age_seconds",
+        key="seconds_since_last_seen",
+        translation_key="seconds_since_last_seen",
         name="Seconds since last request",
         native_unit_of_measurement="s",
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda d: d.get("age_seconds"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    IdegisSensorDescription(
-        key="polling_rate",
-        translation_key="polling_rate",
-        name="Polling rate",
-        native_unit_of_measurement="req/min",
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda d: d.get("polling_rate_per_min_5m"),
-    ),
-    IdegisSensorDescription(
-        key="requests_total",
-        translation_key="requests_total",
-        name="Captured requests",
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda d: d.get("requests_total"),
+        value_fn=lambda d: d.get("seconds_since_last_seen"),
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     IdegisSensorDescription(
@@ -90,118 +82,14 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     IdegisSensorDescription(
-        key="last_endpoint",
-        translation_key="last_endpoint",
-        name="Last endpoint",
-        value_fn=lambda d: d.get("last_endpoint"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    IdegisSensorDescription(
-        key="last_upstream_time",
-        translation_key="last_upstream_time",
-        name="Last cloud upstream time",
-        native_unit_of_measurement="s",
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda d: d.get("last_upstream_time_s"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    # Raw B0 fields exposed verbatim until we decode them
-    IdegisSensorDescription(
-        key="li_raw",
-        translation_key="li_raw",
-        name="LI field raw",
-        value_fn=lambda d: (d.get("last_fields") or {}).get("LI"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    IdegisSensorDescription(
-        key="cd_raw",
-        translation_key="cd_raw",
-        name="CD field raw",
-        value_fn=lambda d: (d.get("last_fields") or {}).get("CD"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    IdegisSensorDescription(
-        key="sg_raw",
-        translation_key="sg_raw",
-        name="SG field raw",
-        value_fn=lambda d: (d.get("last_fields") or {}).get("SG"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    IdegisSensorDescription(
-        key="cy_raw",
-        translation_key="cy_raw",
-        name="CY field raw",
-        value_fn=lambda d: (d.get("last_fields") or {}).get("CY"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    # New in capturer 0.2.0
-    IdegisSensorDescription(
-        key="last_response_size",
-        translation_key="last_response_size",
-        name="Last cloud response size",
-        native_unit_of_measurement="B",
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda d: d.get("last_response_size_bytes"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    IdegisSensorDescription(
-        key="session_age",
-        translation_key="session_age",
-        name="Session age",
-        native_unit_of_measurement="s",
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda d: d.get("session_age_seconds"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    # New in capturer 0.3.0
-    IdegisSensorDescription(
-        key="pump_power",
-        translation_key="pump_power",
-        name="Filter pump power",
-        native_unit_of_measurement="W",
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda d: d.get("pump_power_w"),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    # New in capturer 0.4.0 — decoded fields
-    IdegisSensorDescription(
         key="device_serial",
         translation_key="device_serial",
         name="Device serial",
-        value_fn=lambda d: (
-            (d.get("last_fields_decoded") or {}).get("TD", {}).get("decoded")
-        ),
+        value_fn=lambda d: d.get("session_token"),
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    IdegisSensorDescription(
-        key="li_counter",
-        translation_key="li_counter",
-        name="Request counter",
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda d: (
-            (d.get("last_fields_decoded") or {}).get("LI", {}).get("decoded")
-        ),
-    ),
-    IdegisSensorDescription(
-        key="device_clock",
-        translation_key="device_clock",
-        name="Device clock",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda d: (
-            (d.get("last_fields_decoded") or {}).get("CD", {}).get("as_iso_utc")
-        ),
-    ),
-    IdegisSensorDescription(
-        key="cloud_clock",
-        translation_key="cloud_clock",
-        name="Cloud clock",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda d: (
-            (d.get("last_response_fields_decoded") or {}).get("CD", {}).get("as_iso_utc")
-        ),
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    # New in capturer 0.5.0 — actual water measurements
+    # Live point values — see module docstring for why these are not the
+    # ones to trust for automations.
     IdegisSensorDescription(
         key="ph",
         translation_key="ph",
@@ -209,7 +97,7 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         native_unit_of_measurement="pH",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda d: _measure(d, "ph"),
+        value_fn=lambda d: _live(d, "ph"),
     ),
     IdegisSensorDescription(
         key="salinity",
@@ -218,7 +106,7 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         native_unit_of_measurement="g/L",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda d: _measure(d, "salinity"),
+        value_fn=lambda d: _live(d, "salinity"),
     ),
     IdegisSensorDescription(
         key="water_temperature",
@@ -228,7 +116,7 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         native_unit_of_measurement="°C",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
-        value_fn=lambda d: _measure(d, "temperature"),
+        value_fn=lambda d: _live(d, "temperature"),
     ),
     IdegisSensorDescription(
         key="production_percent",
@@ -237,9 +125,9 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         native_unit_of_measurement="%",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
-        value_fn=lambda d: _measure(d, "production_percent"),
+        value_fn=lambda d: _live(d, "production_percent"),
     ),
-    # Session sensors (capturer v0.6.0)
+    # Session aggregates — the trustworthy ones.
     IdegisSensorDescription(
         key="last_session_ph_avg",
         translation_key="last_session_ph_avg",
@@ -247,10 +135,7 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         native_unit_of_measurement="pH",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda d: (
-            ((d.get("last_session") or {}).get("measurements", {}) or {})
-            .get("ph", {}).get("avg")
-        ),
+        value_fn=lambda d: _session(d, "ph"),
     ),
     IdegisSensorDescription(
         key="last_session_temperature_avg",
@@ -260,10 +145,7 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         native_unit_of_measurement="°C",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
-        value_fn=lambda d: (
-            ((d.get("last_session") or {}).get("measurements", {}) or {})
-            .get("temperature", {}).get("avg")
-        ),
+        value_fn=lambda d: _session(d, "temperature"),
     ),
     IdegisSensorDescription(
         key="last_session_salinity_avg",
@@ -272,10 +154,7 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         native_unit_of_measurement="g/L",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda d: (
-            ((d.get("last_session") or {}).get("measurements", {}) or {})
-            .get("salinity", {}).get("avg")
-        ),
+        value_fn=lambda d: _session(d, "salinity"),
     ),
     IdegisSensorDescription(
         key="last_session_production_avg",
@@ -284,10 +163,7 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         native_unit_of_measurement="%",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
-        value_fn=lambda d: (
-            ((d.get("last_session") or {}).get("measurements", {}) or {})
-            .get("production_percent", {}).get("avg")
-        ),
+        value_fn=lambda d: _session(d, "production_percent"),
     ),
     IdegisSensorDescription(
         key="last_session_duration",
@@ -314,16 +190,7 @@ SENSORS: tuple[IdegisSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: (d.get("last_session") or {}).get("last_ts"),
     ),
-    IdegisSensorDescription(
-        key="current_session_writes",
-        translation_key="current_session_writes",
-        name="Current session writes",
-        state_class=SensorStateClass.MEASUREMENT,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda d: (d.get("current_session") or {}).get("n_writes"),
-    ),
 )
-
 
 
 async def async_setup_entry(
@@ -349,17 +216,17 @@ class IdegisSensor(CoordinatorEntity[IdegisCloudMitmCoordinator], SensorEntity):
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
+        self._entry_id = entry_id
         self._attr_unique_id = f"{entry_id}_{description.key}"
 
     @property
     def device_info(self) -> DeviceInfo:
         data = self.coordinator.data or {}
         return DeviceInfo(
-            identifiers={(DOMAIN, data.get("device_id") or self.coordinator.host)},
+            identifiers={(DOMAIN, data.get("device_id") or self._entry_id)},
             manufacturer=MANUFACTURER,
             model=MODEL_DEFAULT,
             name="Idegis chlorinator",
-            configuration_url=f"http://{self.coordinator.host}:{self.coordinator.port}/api/idegis/state",
         )
 
     @property

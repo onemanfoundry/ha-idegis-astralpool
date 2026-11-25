@@ -39,6 +39,51 @@ que el coordinador deje de depender del polling a `:8765`.
 
 ---
 
+## 2026-11-25 (iteración 2) — Receptor MITM nativo + entidades reescritas
+
+Segunda iteración del loop. Hecho:
+
+- `state.py` nuevo: máquina de estado del receptor cloud-MITM portada del
+  `State`/`proxy_handler` del add-on (sticky fields, sesiones con
+  min/max/avg, cierre por idle) — **sin ningún import de `homeassistant`**,
+  para poder testearla sin instalar HA. Tests en
+  `tests/test_component_state.py` (9 casos), incluyendo el caso que
+  guarda la regresión de `feedback_idegis_use_session_avgs`: el valor
+  "live" (sticky, última escritura) y el "last session avg" deben poder
+  discrepar, y el sensor de automatización debe usar el segundo.
+- `cloud_proxy.py` reescrito como capa fina: dos `HomeAssistantView`
+  (`requires_auth=False`) en `/api/idegis_astralpool/interface/{read,write}.php`,
+  proxy transparente al cloud real de Idegis (igual que el add-on, no
+  sustituye al cloud). Ya no hace falta el capturer externo para el modo A.
+- `coordinator.py` pasa de polling HTTP cada N segundos a *push*:
+  `update_interval=None`, la vista llama a `push_update()` tras cada
+  ingest (el dispositivo ya decide su propio ritmo de polling al cloud).
+- `__init__.py` / `config_flow.py` simplificados: ya no hay host/port que
+  configurar ni sondear (nada externo que comprobar). `config_flow` ahora
+  es un solo paso de confirmación.
+- `sensor.py` / `binary_sensor.py` reescritos contra la forma nueva del
+  snapshot (`online`, `last_seen`, `live_measurements`, `last_session`…);
+  el prototipo viejo asumía el JSON del capturer externo
+  (`age_seconds`, `last_fields`, `pump_power_w`...) que ya no existe. De
+  paso se detectó y arregló que `device_info` seguía referenciando
+  `coordinator.host`/`.port`, atributos que ya no existen en el
+  coordinator — lo habría roto en el primer `async_setup_entry` real.
+- **Gap de CI cerrado**: hasta ahora ningún job de CI importaba de verdad
+  `custom_components/idegis_astralpool/*.py` (solo se validaba la forma
+  de `manifest.json`). Nuevo job `component` en
+  `.github/workflows/ci.yaml` instala
+  `pytest-homeassistant-custom-component` y corre
+  `tests/test_component_smoke.py` (config_flow, setup_entry, registro de
+  vistas, entidades, unload) contra un HA real. Localmente se salta
+  (`importorskip`) porque no hay `homeassistant` instalado en este NAS.
+- Manifest → `0.2.0`.
+
+Pendiente próxima iteración: panel nativo (fase ε) portando
+`addon/rootfs/opt/idegis/static/`, y empezar a portar coste
+eléctrico/recomendación de filtración (fase γ/ζ).
+
+---
+
 ## 2026-06-02 — Add-on v0.1.0 desplegado en HA prod + switchover desde CT104
 
 Sesión final del día. Sergio prioriza ir directo al setup en add-on para

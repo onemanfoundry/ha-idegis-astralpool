@@ -1,44 +1,22 @@
 {
   "config": {
     "step": {
-      "cloud_mitm": {
-        "title": "Capturador cloud-MITM de Idegis",
-        "description": "Apunta a la máquina que ejecuta el proxy reverso nginx + el servicio idegis-state.",
-        "data": {
-          "host": "Host del capturador",
-          "port": "Puerto del capturador",
-          "scan_interval": "Intervalo de polling (segundos)"
-        }
+      "user": {
+        "title": "Receptor cloud-MITM Idegis / AstralPool",
+        "description": "Esta instancia de Home Assistant ejecutará su propio receptor del protocolo cloud del clorador. Requisito previo (una vez, fuera de HA): el DNS override / proxy reverso de la LAN para api.idegis.net debe apuntar al puerto HTTP de esta instancia, a /api/idegis_astralpool/interface/read.php y write.php. Ver docs/06-installation-and-lan.md en el repositorio."
       }
     },
-    "error": {
-      "capturer_unreachable": "No se puede contactar con el capturador. Verifica que idegis-state.service esté corriendo."
-    },
     "abort": {
-      "already_configured": "Este capturador ya está configurado."
+      "already_configured": "Idegis / AstralPool ya está configurado."
     }
   },
   "entity": {
     "sensor": {
       "last_seen": {"name": "Última conexión"},
-      "age_seconds": {"name": "Segundos desde la última petición"},
-      "polling_rate": {"name": "Frecuencia de polling"},
-      "requests_total": {"name": "Peticiones capturadas"},
+      "seconds_since_last_seen": {"name": "Segundos desde la última petición"},
       "read_count": {"name": "Llamadas read.php"},
       "write_count": {"name": "Llamadas write.php"},
-      "last_endpoint": {"name": "Último endpoint"},
-      "last_upstream_time": {"name": "Tiempo última respuesta cloud"},
-      "li_raw": {"name": "Campo LI raw"},
-      "cd_raw": {"name": "Campo CD raw"},
-      "sg_raw": {"name": "Campo SG raw"},
-      "cy_raw": {"name": "Campo CY raw"},
-      "last_response_size": {"name": "Tamaño última respuesta cloud"},
-      "session_age": {"name": "Duración sesión"},
-      "pump_power": {"name": "Potencia bomba filtración"},
       "device_serial": {"name": "Serial del equipo"},
-      "li_counter": {"name": "Contador de peticiones"},
-      "device_clock": {"name": "Reloj del equipo"},
-      "cloud_clock": {"name": "Reloj del cloud"},
       "ph": {"name": "pH"},
       "salinity": {"name": "Salinidad"},
       "water_temperature": {"name": "Temperatura agua"},
@@ -49,8 +27,7 @@
       "last_session_production_avg": {"name": "Última sesión producción media"},
       "last_session_duration": {"name": "Última sesión duración"},
       "last_session_n_writes": {"name": "Última sesión escrituras"},
-      "last_session_end": {"name": "Última sesión fin"},
-      "current_session_writes": {"name": "Sesión actual escrituras"}
+      "last_session_end": {"name": "Última sesión fin"}
     }
   }
 }

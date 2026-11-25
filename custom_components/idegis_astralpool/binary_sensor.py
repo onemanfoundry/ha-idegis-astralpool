@@ -31,13 +31,14 @@ class IdegisOnline(CoordinatorEntity[IdegisCloudMitmCoordinator], BinarySensorEn
 
     def __init__(self, coordinator: IdegisCloudMitmCoordinator, entry_id: str) -> None:
         super().__init__(coordinator)
+        self._entry_id = entry_id
         self._attr_unique_id = f"{entry_id}_online"
 
     @property
     def device_info(self) -> DeviceInfo:
         data = self.coordinator.data or {}
         return DeviceInfo(
-            identifiers={(DOMAIN, data.get("device_id") or self.coordinator.host)},
+            identifiers={(DOMAIN, data.get("device_id") or self._entry_id)},
             manufacturer=MANUFACTURER,
             model=MODEL_DEFAULT,
             name="Idegis chlorinator",

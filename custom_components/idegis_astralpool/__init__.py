@@ -1,8 +1,13 @@
 """Idegis / AstralPool pool chlorinator integration.
 
-Currently supports only the cloud-MITM capture mode (path A). Modbus RTU
-(path B) and Poolstation cloud (path C) are placeholders for future
-releases — see docs/09-roadmap.md in the repository.
+Native mode A (cloud-MITM): this integration registers its own HTTP
+receiver (see cloud_proxy.py) that the LAN's reverse proxy / DNS override
+for api.idegis.net forwards to, decodes the B0 protocol itself, and
+exposes entities fed by a push-based coordinator. No external capturer
+add-on is required any more for this mode.
+
+Modbus RTU (path B) and Poolstation cloud (path C) are placeholders for
+future releases — see docs/09-roadmap.md in the repository.
 """
 from __future__ import annotations
 
@@ -11,19 +16,12 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import (
-    CONF_HOST,
-    CONF_MODE,
-    CONF_PORT,
-    CONF_SCAN_INTERVAL,
-    DEFAULT_MITM_HOST,
-    DEFAULT_MITM_PORT,
-    DEFAULT_SCAN_INTERVAL_S,
-    DOMAIN,
-    MODE_CLOUD_MITM,
-)
+from .cloud_proxy import register_views
+from .const import CONF_MODE, DOMAIN, MODE_CLOUD_MITM
 from .coordinator import IdegisCloudMitmCoordinator
+from .state import IdegisState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,16 +36,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("mode %s is not implemented yet", mode)
         return False
 
-    host = entry.data.get(CONF_HOST, DEFAULT_MITM_HOST)
-    port = entry.data.get(CONF_PORT, DEFAULT_MITM_PORT)
-    scan_interval = entry.options.get(
-        CONF_SCAN_INTERVAL,
-        entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_S),
-    )
+    state = IdegisState()
+    coordinator = IdegisCloudMitmCoordinator(hass, state)
 
-    coordinator = IdegisCloudMitmCoordinator(
-        hass, host=host, port=port, scan_interval_s=scan_interval
-    )
+    # HA's HTTP router has no unregister_view: registering the same URL
+    # twice (e.g. on a config entry reload) raises. Only the very first
+    # setup in this hass run actually registers the views; later entries
+    # just update what they feed, which is fine since mode A only ever
+    # expects a single physical chlorinator/config entry.
+    if not hass.data.get(f"{DOMAIN}_views_registered"):
+        session = async_get_clientsession(hass)
+        register_views(hass, state, session, on_update=coordinator.push_update)
+        hass.data[f"{DOMAIN}_views_registered"] = True
+
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
@@ -60,6 +61,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        coordinator: IdegisCloudMitmCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
-        await coordinator.async_shutdown()
+        hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok

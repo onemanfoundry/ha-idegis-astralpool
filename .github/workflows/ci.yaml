@@ -54,6 +54,24 @@ jobs:
         working-directory: addon-pool-brain
         run: pytest -q
 
+  # ── custom_component smoke tests: the only job that actually imports
+  #    custom_components/idegis_astralpool/*.py against a real Home
+  #    Assistant core (config_flow, setup_entry, view registration,
+  #    entities). Everything else (validate/hacs/addon-lint) only checks
+  #    manifest shape, never executes the integration's Python. ──
+  component:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Home Assistant test deps
+        run: |
+          pip install pytest pytest-asyncio pytest-homeassistant-custom-component
+      - name: Pytest — custom_component smoke suite
+        run: pytest tests/test_component_smoke.py -q
+
   # ── End-to-end visualization tests: render the real capturer dashboard
   #    (index.html + app.js) in headless Chromium against the real aiohttp app
   #    seeded with fixtures, and assert the SVG charts actually draw. Catches
