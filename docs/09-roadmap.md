@@ -146,13 +146,13 @@ JSONL store).
   `filtration_solar_pct_30d`. `config_flow.py`'s options flow gained
   `pump_power_entity`/`grid_power_entity` (optional `EntitySelector`s,
   domain `sensor`, device_class `power`).
-- [ ] **Known rough edge**: the recommendation sensor doesn't actually
-  need a pump entity (only the live temperature), but
-  `IdegisCostCoordinator._async_update_data` currently returns `None`
-  entirely — recommendation included — until `pump_power_entity` is
-  set, coupling the two features for simplicity. Worth decoupling if
-  Sergio wants the recommendation available before wiring up energy
-  cost.
+- [x] **Rough edge fixed (iteration 8)**: `recommendation` and `cost`
+  are now computed independently inside
+  `IdegisCostCoordinator._async_update_data` — the recommendation
+  (needs only the live temperature) is always computed; `cost` stays
+  `None` only until `pump_power_entity` is actually set.
+  `recommended_filtration_minutes_today` now has a real value from
+  first setup, with no energy wiring required.
 - [ ] **Still not re-confirmed with Sergio**: the calibrated
   `recommendation.py` defaults (~56 min/day) are now reachable from a
   real sensor for the first time — he should look at the number once
@@ -193,16 +193,22 @@ JSONL store).
   suite) — guards against an accidental truncation or a silently
   removed section; `node --check` for syntax if `node` is on PATH
   (skips otherwise).
-- [ ] **Known gap, deliberate**: there is no dedicated "active alerts"
-  entity/list from `alerts.py`'s `AlertEngine` — the panel infers it by
-  scanning `persistent_notification.*` state for ones that look
-  Idegis-related. Works for the one notify route this project currently
-  wires (`persistent_notification.create`), but wouldn't show an alert
-  routed to e.g. a Telegram-only `notify_service` with no
-  persistent_notification mirror. A proper fix would have `AlertEngine`
-  expose its own `_active` set through an entity (e.g. a
-  `binary_sensor` per alert id) rather than relying on the dispatch
-  target.
+- [x] **Gap closed (iteration 8)**: `alerts.py`'s `AlertEngine` now
+  exposes `active_alerts` (the full, current `Alert` objects, not just
+  the newly-triggered ones `evaluate()` returns), kept up to date on
+  every call. A new `sensor.idegis_chlorinator_active_alerts` entity
+  (`sensor.py`'s `IdegisActiveAlertsSensor`) surfaces its count as the
+  state and the full list (id + message) as an attribute;
+  `__init__.py` now calls `alert_engine.evaluate()` synchronously in the
+  coordinator-update listener (only the actual `notify.*` call stays
+  async) so the sensor is never a push-cycle behind. The panel now reads
+  this sensor directly instead of scanning
+  `persistent_notification.*` — shows every active alert regardless of
+  which `notify_service` it's routed to.
+  `tests/test_component_alerts.py` gained a pure-logic test for
+  `active_alerts` tracking current-vs-just-fired state correctly;
+  `tests/test_component_smoke.py` gained an end-to-end test that it
+  clears on recovery.
 - [ ] E2E tests: `tests/test_dashboard_e2e.py` still targets the *old
   add-on's* dashboard (`addon/rootfs/opt/idegis/static/`), not this
   native panel — left untouched since it's Sergio's own in-progress file

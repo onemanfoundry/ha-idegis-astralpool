@@ -157,10 +157,23 @@ _CHECKS = (_check_ph, _check_salinity, _check_session_stale)
 @dataclass
 class AlertEngine:
     """Tracks which alert_ids are currently active, across calls, so each
-    one is reported only on its rising edge (not-met -> met)."""
+    one is reported only on its rising edge (not-met -> met).
+
+    ``active_alerts`` (the full ``Alert`` objects, not just the ids) is
+    kept up to date on every :meth:`evaluate` call so a caller — e.g. a
+    coordinator feeding a diagnostic sensor — can show the current state
+    of all active alerts, not just the ones that just triggered. This is
+    what lets the native panel show "active alerts" without depending on
+    them being routed through a particular ``notify_service`` (see
+    docs/09-roadmap.md phase epsilon)."""
 
     config: AlertConfig
     _active: set[str] = field(default_factory=set)
+    _active_details: dict[str, Alert] = field(default_factory=dict)
+
+    @property
+    def active_alerts(self) -> list[Alert]:
+        return list(self._active_details.values())
 
     def evaluate(
         self,
@@ -190,4 +203,5 @@ class AlertEngine:
 
         new_ids = set(current) - self._active
         self._active = set(current)
+        self._active_details = current
         return [current[i] for i in new_ids]

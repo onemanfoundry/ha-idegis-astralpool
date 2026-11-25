@@ -16,13 +16,18 @@
  * Sergio's "same visual bar as the other home-grown apps" requirement —
  * see docs/09-roadmap.md phase epsilon.
  *
- * Iteration 7 adds: 24h history sparklines (pH/salinity/temperature, pure
- * inline SVG — no charting library, same "no external dependencies"
- * stance as the rest of this panel), the cost/recommendation sensors
- * wired in iteration 6 (history_glue.py), and an active-alerts section
- * read from HA's own `persistent_notification.*` entities (the same
- * sink notify_dispatch.py's alerts land in when routed to
- * `persistent_notification.create`).
+ * Iteration 7 added: 24h history sparklines (pH/salinity/temperature,
+ * pure inline SVG — no charting library, same "no external dependencies"
+ * stance as the rest of this panel) and the cost/recommendation sensors
+ * wired in iteration 6 (history_glue.py).
+ *
+ * Iteration 8: the active-alerts section now reads
+ * `sensor.idegis_chlorinator_active_alerts` directly — AlertEngine's own
+ * active set (alerts.py), exposed as a sensor attribute — instead of
+ * inferring it from `persistent_notification.*` state. That inference
+ * only worked for alerts actually routed to
+ * `persistent_notification.create`; this shows every active alert
+ * regardless of which `notify_service` it's routed to.
  */
 const SPARK_W = 280;
 const SPARK_H = 56;
@@ -64,14 +69,14 @@ class IdegisAstralpoolPanel extends HTMLElement {
     return out;
   }
 
-  _activeNotifications() {
-    const states = (this._hass && this._hass.states) || {};
-    return Object.entries(states)
-      .filter(([id]) => id.startsWith("persistent_notification."))
-      .map(([, s]) => s)
-      .filter((s) => (s.attributes.title || "").toLowerCase().includes("idegis") ||
-                     (s.attributes.message || "").toLowerCase().includes("idegis") ||
-                     (s.attributes.message || "").toLowerCase().includes("chlorinator"));
+  // sensor.idegis_chlorinator_active_alerts (iteration 8) carries the
+  // full list in its `alerts` attribute, straight from AlertEngine's own
+  // active set — no longer inferred from persistent_notification state,
+  // so this also shows alerts routed only to e.g. Telegram.
+  _activeAlerts(e) {
+    const sensor = e.active_alerts;
+    if (!sensor) return [];
+    return sensor.attributes.alerts || [];
   }
 
   _fmt(state, digits) {
@@ -160,7 +165,7 @@ class IdegisAstralpoolPanel extends HTMLElement {
     if (!this._hass) return;
     const e = this._entities();
     const online = e.online && e.online.state === "on";
-    const alerts = this._activeNotifications();
+    const alerts = this._activeAlerts(e);
     const h = this._history || {};
 
     this._root.innerHTML = `
@@ -229,8 +234,8 @@ class IdegisAstralpoolPanel extends HTMLElement {
             <div class="alert-card">
               <span class="dot">●</span>
               <div>
-                <div class="title">${a.attributes.title || "Idegis chlorinator"}</div>
-                <div class="msg">${a.attributes.message || ""}</div>
+                <div class="title">${a.id}</div>
+                <div class="msg">${a.message || ""}</div>
               </div>
             </div>`
                 )

@@ -4,6 +4,60 @@ Diario cronológico inverso. Entradas más recientes arriba. Castellano.
 
 ---
 
+## 2026-11-25 (iteración 8) — desacoplo recomendación/coste + alertas activas como entidad propia
+
+Octava iteración. Dos huecos documentados de iteraciones anteriores,
+ambos cerrados:
+
+**A) Desacoplar `recommendation.py` de `cost.py`** en
+`IdegisCostCoordinator` (coordinator.py): `_async_update_data` ahora
+calcula la recomendación de forma independiente de si hay
+`pump_power_entity` configurada (solo necesita la temperatura en vivo);
+`cost` sigue en `None` solo hasta que se configure la entidad de bomba.
+El sensor `recommended_filtration_minutes_today` ya tiene valor real
+desde el primer arranque, sin necesidad de configurar nada de energía.
+Test del smoke suite actualizado (`test_cost_and_recommendation_decoupled`)
+para reflejar el nuevo comportamiento.
+
+**B) Alertas activas como entidad propia**, no inferidas de
+`persistent_notification.*`:
+- `alerts.py`: `AlertEngine` gana la propiedad `active_alerts` (los
+  `Alert` completos actualmente activos, no solo los que acaban de
+  dispararse en la última llamada a `evaluate()`). Test puro nuevo
+  (`test_active_alerts_reflects_current_state_not_just_new`) que prueba
+  que distingue "sigue activo" de "se dispara ahora" y de "se ha
+  recuperado".
+- `notify_dispatch.py`: separado en `dispatch_new_alerts` (compatibilidad,
+  evalúa y despacha) y `dispatch_alerts` (solo despacha, sin evaluar).
+- `__init__.py`: el listener del coordinador ahora llama a
+  `alert_engine.evaluate()` de forma síncrona (es puro y barato) y solo
+  lanza como tarea async la llamada real a `notify.*` — así el sensor de
+  alertas activas nunca va un ciclo de push por detrás.
+- Sensor nuevo `sensor.idegis_chlorinator_active_alerts`
+  (`IdegisActiveAlertsSensor`): estado = número de alertas activas,
+  atributo `alerts` = lista completa (id + mensaje).
+- `panel_assets/idegis-astralpool-panel.js`: la sección de alertas
+  activas ahora lee este sensor directamente en vez de escanear
+  `persistent_notification.*` — muestra cualquier alerta activa sin
+  importar a qué `notify_service` esté enrutada (antes solo funcionaba
+  si iba a `persistent_notification.create`).
+- Test end-to-end nuevo en el smoke suite
+  (`test_active_alerts_sensor_clears_on_recovery`): confirma que el
+  sensor baja a 0 cuando el pH vuelve a rango.
+- Manifest → `0.7.0`. Suite completa: 93 tests locales en verde + 1
+  skip esperado.
+
+Sigue bloqueada la revisión de logs reales (CT104 parado, ver
+iteración 6) y pendiente el visto bueno de Sergio a los defaults
+calibrados de filtración. Con A y B cerrados, los huecos documentados
+y no bloqueados que quedan son menores (test dedicado de
+`history_glue.py` con fixture de recorder real, y comprobar
+preparación para HACS). A partir de aquí, el valor de seguir puliendo
+detalles sin su input empieza a ser bajo — lo dejo anotado para la
+próxima iteración si procede, o para pararme y esperar feedback suyo.
+
+---
+
 ## 2026-11-25 (iteración 7) — panel nativo: gráficas, coste y alertas (fase ε)
 
 Séptima iteración. Cierro el hueco visual más visible del objetivo 3 de

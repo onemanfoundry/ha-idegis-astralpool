@@ -28,7 +28,7 @@ from .cloud_proxy import register_views
 from .config_flow import OPT_GRID_POWER_ENTITY, OPT_PUMP_POWER_ENTITY
 from .const import CONF_MODE, DOMAIN, MODE_CLOUD_MITM
 from .coordinator import IdegisCloudMitmCoordinator, IdegisCostCoordinator
-from .notify_dispatch import dispatch_new_alerts
+from .notify_dispatch import dispatch_alerts
 from .panel import async_register_panel
 from .state import IdegisState
 
@@ -52,9 +52,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     def _on_coordinator_update() -> None:
         if coordinator.data is None:
             return
-        hass.async_create_task(
-            dispatch_new_alerts(hass, alert_engine, coordinator.data, "Idegis chlorinator")
-        )
+        # Evaluate synchronously (pure, cheap) so AlertEngine.active_alerts
+        # — and the sensor that surfaces it — is up to date the instant
+        # the coordinator pushes; only the actual notify.* call is async.
+        new_alerts = alert_engine.evaluate(coordinator.data)
+        if new_alerts:
+            hass.async_create_task(
+                dispatch_alerts(hass, alert_engine.config, new_alerts, "Idegis chlorinator")
+            )
 
     coordinator.async_add_listener(_on_coordinator_update)
 
@@ -81,6 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "cloud_mitm": coordinator,
         "cost": cost_coordinator,
+        "alert_engine": alert_engine,
     }
 
     await async_register_panel(hass)

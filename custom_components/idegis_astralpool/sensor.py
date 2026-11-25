@@ -26,6 +26,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .alerts import AlertEngine
 from .const import DOMAIN, MANUFACTURER, MODEL_DEFAULT
 from .coordinator import IdegisCloudMitmCoordinator, IdegisCostCoordinator
 
@@ -261,9 +262,11 @@ async def async_setup_entry(
     coordinators = hass.data[DOMAIN][entry.entry_id]
     coordinator: IdegisCloudMitmCoordinator = coordinators["cloud_mitm"]
     cost_coordinator: IdegisCostCoordinator = coordinators["cost"]
+    alert_engine: AlertEngine = coordinators["alert_engine"]
     async_add_entities(
         [IdegisSensor(coordinator, desc, entry.entry_id) for desc in SENSORS]
         + [IdegisCostSensor(cost_coordinator, desc, entry.entry_id) for desc in COST_SENSORS]
+        + [IdegisActiveAlertsSensor(coordinator, alert_engine, entry.entry_id)]
     )
 
 
@@ -304,6 +307,45 @@ class IdegisSensor(_IdegisSensorBase, CoordinatorEntity[IdegisCloudMitmCoordinat
         if self.coordinator.data is None:
             return None
         return self.entity_description.value_fn(self.coordinator.data)
+
+
+class IdegisActiveAlertsSensor(_IdegisSensorBase, CoordinatorEntity[IdegisCloudMitmCoordinator]):
+    """Surfaces AlertEngine's own active-alert set directly, rather than
+    inferring it from whatever notify_service happens to be configured
+    (unlike the panel's current persistent_notification-scanning
+    fallback — see docs/09-roadmap.md phase epsilon). Ticks on every
+    chlorinator push, same as IdegisSensor, since __init__.py evaluates
+    the engine synchronously in that listener."""
+
+    _attr_icon = "mdi:alert-circle-outline"
+
+    def __init__(
+        self,
+        coordinator: IdegisCloudMitmCoordinator,
+        alert_engine: AlertEngine,
+        entry_id: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._alert_engine = alert_engine
+        self._entry_id = entry_id
+        self._attr_unique_id = f"{entry_id}_active_alerts"
+        self._attr_translation_key = "active_alerts"
+
+    def _device_identifier(self) -> str:
+        return (self.coordinator.data or {}).get("device_id") or self._entry_id
+
+    @property
+    def native_value(self) -> int:
+        return len(self._alert_engine.active_alerts)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "alerts": [
+                {"id": a.alert_id, "message": a.message}
+                for a in self._alert_engine.active_alerts
+            ]
+        }
 
 
 class IdegisCostSensor(_IdegisSensorBase, CoordinatorEntity[IdegisCostCoordinator]):

@@ -52,14 +52,16 @@ class IdegisCloudMitmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.async_set_updated_data(self._state.snapshot())
 
 
-class IdegisCostCoordinator(DataUpdateCoordinator[dict[str, Any] | None]):
+class IdegisCostCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Polls pump/grid power history every 15 min and recomputes
     electricity cost + the filtration recommendation.
 
-    Returns ``None`` (not an error) when no ``pump_power_entity`` is
-    configured yet — sensor.py's cost/recommendation entities just stay
-    unavailable until the user picks one in the options flow, rather
-    than this coordinator raising ``UpdateFailed``.
+    The two are decoupled: ``data["recommendation"]`` only needs the
+    chlorinator's own live temperature reading, so it's always computed;
+    ``data["cost"]`` is ``None`` (not an error) until a
+    ``pump_power_entity`` is configured in the options flow — its sensors
+    just stay unavailable until then, rather than this coordinator
+    raising ``UpdateFailed``.
     """
 
     def __init__(
@@ -80,13 +82,19 @@ class IdegisCostCoordinator(DataUpdateCoordinator[dict[str, Any] | None]):
             update_interval=COST_UPDATE_INTERVAL,
         )
 
-    async def _async_update_data(self) -> dict[str, Any] | None:
-        if not self._pump_entity:
-            return None
-        cost = await async_compute_cost(
-            self.hass, pump_entity=self._pump_entity, grid_entity=self._grid_entity
-        )
+    async def _async_update_data(self) -> dict[str, Any]:
+        # The recommendation only needs the live temperature reading, not
+        # the pump entity - compute it unconditionally so its sensor
+        # works even before a pump_power_entity is configured. `cost` is
+        # the only part that actually depends on pump history, and stays
+        # None (not an error) until that entity is set.
         live = (self._cloud_mitm_coordinator.data or {}).get("live_measurements") or {}
         temp_c = live.get("temperature", {}).get("value")
         recommendation = compute_recommendation_now(temp_c)
+
+        cost = None
+        if self._pump_entity:
+            cost = await async_compute_cost(
+                self.hass, pump_entity=self._pump_entity, grid_entity=self._grid_entity
+            )
         return {"cost": cost, "recommendation": recommendation}

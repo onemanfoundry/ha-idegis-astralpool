@@ -129,3 +129,29 @@ def test_multiple_simultaneous_alerts(alerts_mod):
     engine = alerts_mod.AlertEngine(config=cfg)
     fired = engine.evaluate(_snap(ph=6.0, salinity=0.5))
     assert {a.alert_id for a in fired} == {"ph_low", "salinity_low"}
+
+
+def test_active_alerts_reflects_current_state_not_just_new(alerts_mod):
+    """active_alerts (iteration 8) must track what's active *now*, not
+    only what evaluate() just returned as newly-triggered — a consumer
+    (the panel's active-alerts sensor) polls this between evaluations
+    and must see an already-firing alert, not just its rising edge."""
+    cfg = alerts_mod.AlertConfig(ph_enabled=True)
+    engine = alerts_mod.AlertEngine(config=cfg)
+
+    assert engine.active_alerts == []
+
+    fired = engine.evaluate(_snap(ph=6.0))
+    assert [a.alert_id for a in fired] == ["ph_low"]
+    assert [a.alert_id for a in engine.active_alerts] == ["ph_low"]
+
+    # Still low on the next evaluation: no new rising edge, but still
+    # active.
+    fired_again = engine.evaluate(_snap(ph=6.0))
+    assert fired_again == []
+    assert [a.alert_id for a in engine.active_alerts] == ["ph_low"]
+
+    # Recovers: active_alerts must clear even though nothing "fires".
+    fired_on_recovery = engine.evaluate(_snap(ph=7.3))
+    assert fired_on_recovery == []
+    assert engine.active_alerts == []

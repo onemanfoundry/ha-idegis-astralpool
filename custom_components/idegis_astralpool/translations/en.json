@@ -55,7 +55,8 @@
       "filtration_cost_24h": {"name": "Filtration cost (24h)"},
       "filtration_cost_7d": {"name": "Filtration cost (7d)"},
       "filtration_cost_30d": {"name": "Filtration cost (30d)"},
-      "filtration_solar_pct_30d": {"name": "Filtration solar share (30d)"}
+      "filtration_solar_pct_30d": {"name": "Filtration solar share (30d)"},
+      "active_alerts": {"name": "Active alerts"}
     }
   }
 }
