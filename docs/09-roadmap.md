@@ -111,6 +111,38 @@ JSONL store).
 - Add `button` entities for alarm reset.
 - Multi-mode config_flow with auto-detection.
 
+### Phase δ — electricity cost + filtration recommendation
+
+- [x] `cost.py`: pure port of the addon's `cost_breakdown` /
+  `kwh_from_history` / `tariff_period` / `tariff_price` (v0.6.11, Spain
+  2.0TD geometry, solar/grid attribution). No `homeassistant` import —
+  takes plain history dicts, does no I/O itself. Tested in
+  `tests/test_component_cost.py`, cross-checked field-by-field against
+  the addon's own function.
+- [x] `recommendation.py`: pure port of `_compute_recommendation` /
+  `_temp_multiplier` (chlorine-demand vs turnover, whichever is larger).
+  Tested in `tests/test_component_recommendation.py` for formula parity
+  with the addon **and** for the calibration itself: this module's
+  defaults deliberately do **not** reuse the addon's shipped
+  `config.yaml` values (`target_production_pct: 40`,
+  `chlorine_demand_ppm_per_day: 0.6`, `min_turnovers_per_day: 0.75`,
+  `net_n_clean_installed: false`) because those are the input documented
+  as already known to overshoot to ~139 min/day for this installation
+  (project memory `feedback_filtration_defaults_overshoot`). Instead it
+  uses the calibrated reading from `project_filtration_target`
+  (`target_production_pct=100`, `chlorine_demand_ppm_per_day=0.25`,
+  `min_turnovers_per_day=0.5`, `net_n_clean_installed=True`), which
+  computes to ~56 min/day — a test pins this to the 45-65 min band.
+- [ ] **Not wired to entities yet.** Both modules are pure logic + tests
+  only; neither is called from `sensor.py`, the coordinator, or exposed
+  in `config_flow`/`options_flow`. Wiring `cost.py` needs an options_flow
+  step to pick the pump-power and (optional) grid-power entities and a
+  way to fetch their HA history; wiring `recommendation.py` needs the
+  same calibrated numbers to become overridable options instead of
+  hardcoded module constants — **Sergio should confirm or correct the
+  calibrated defaults above before they're exposed anywhere he'd act on
+  them for real automations.**
+
 ### Phase ε — native panel (clean UI, no Lovelace)
 
 - [x] `panel.py`: registers a `panel_custom` sidebar panel from
@@ -131,7 +163,7 @@ JSONL store).
   what `sensor.py` currently has (live readings + last-session
   averages + diagnostics) — no charts, no multi-session history, no
   electricity cost, no filtration recommendation. Those need their
-  backend logic ported first (phase γ's `cost_breakdown` /
+  backend logic ported first (phase δ's `cost_breakdown` /
   `_compute_recommendation`) before the panel can show them; the add-on
   dashboard's chart code (`app.js`'s SVG rendering) can then be reused
   once there is a data source to feed it from inside the component.

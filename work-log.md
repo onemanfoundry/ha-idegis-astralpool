@@ -4,6 +4,48 @@ Diario cronológico inverso. Entradas más recientes arriba. Castellano.
 
 ---
 
+## 2026-11-25 (iteración 4) — Coste eléctrico + recomendación de filtración portados (fase δ)
+
+Cuarta iteración. Hecho:
+
+- `cost.py` nuevo: port puro (sin `homeassistant`) de `cost_breakdown`,
+  `kwh_from_history`, `tariff_period`, `tariff_price` del add-on
+  (v0.6.11, tarifa 2.0TD España, atribución solar/red). No hace I/O,
+  recibe listas de historial ya obtenidas (forma exacta de
+  `history.get_significant_states` de HA). Tests en
+  `tests/test_component_cost.py` (8 casos) cruzados campo a campo contra
+  la función del add-on.
+- `recommendation.py` nuevo: port puro de `_compute_recommendation` /
+  `_temp_multiplier`. **Decisión importante**: los defaults de este
+  módulo NO copian los del `config.yaml` del add-on (40 % producción,
+  0.6 ppm/día, 0.75 turnovers, Net'N Clean desactivado) porque esos son
+  precisamente los que la memoria del proyecto
+  (`feedback_filtration_defaults_overshoot`) documenta como ya sabidos
+  por dar ~139 min/día. En su lugar usa el calibrado de
+  `project_filtration_target` (100 % producción, 0.25 ppm/día, 0.5
+  turnovers, Net'N Clean activado) → ~56 min/día, dentro de la banda
+  ~55 min que Sergio ya validó. Tests en
+  `tests/test_component_recommendation.py` (10 casos): paridad de
+  fórmula con el add-on en una matriz de inputs sintéticos, Y un test
+  dedicado que fija el número calibrado (45-65 min) y otro que documenta
+  explícitamente que los defaults del add-on dan 139 min (para que quede
+  claro que la divergencia es intencional, no un bug).
+- **Honestidad de alcance**: ninguno de los dos módulos está todavía
+  conectado a entidades/sensores ni al panel — son lógica + tests
+  solamente. Conectarlos necesita un paso de `options_flow` para elegir
+  las entidades de potencia de bomba/red (coste) y para que los números
+  calibrados de filtración sean opciones editables en vez de constantes
+  de módulo — **pendiente de que Sergio confirme o corrija esos valores
+  calibrados antes de exponerlos en ningún sitio donde pueda actuar
+  sobre ellos**. Documentado explícitamente en `docs/09-roadmap.md`
+  (nueva fase δ) en vez de simularlo como "hecho".
+- Manifest → `0.4.0`. Suite completa: 73 tests en verde + 1 skip
+  esperado (smoke de HA real, sigue sin poder correr en este NAS).
+
+Pendiente próxima iteración: empezar notificaciones (fase ζ) u
+options_flow para conectar coste/recomendación a entidades reales.
+
+---
 ## 2026-11-25 — Arranca desarrollo de la "app nativa" (loop autónomo)
 
 Sergio marca 5 objetivos: (1) seguir en GitHub, (2) app nativa de HA —no
