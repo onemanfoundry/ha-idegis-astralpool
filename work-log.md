@@ -4,6 +4,41 @@ Diario cronológico inverso. Entradas más recientes arriba. Castellano.
 
 ---
 
+## 2026-11-25 — Arranca desarrollo de la "app nativa" (loop autónomo)
+
+Sergio marca 5 objetivos: (1) seguir en GitHub, (2) app nativa de HA —no
+add-on—, (3) interfaz propia tipo panel (no Lovelace, no iframe de
+add-on) con gráficas/histórico/alertas igual de cuidada que otros
+proyectos, (4) notificaciones configurables desde la propia app enrutando
+a `notify.*` existentes (Telegram/mail/push), (5) tests de regresión
+sintéticos + revisión de logs reales. Decisiones cerradas con Sergio:
+panel_custom registrado por el propio `custom_component` (no iframe),
+notificaciones enrutando a servicios `notify.*` ya configurados (no
+reimplementar transporte), reusar/portar lógica y UI ya validada de los
+add-ons en vez de reescribir, cobertura de tests en 4 frentes (decoder,
+recomendación, panel E2E, notificaciones). Add-ons actuales NO se tocan
+en producción hasta paridad confirmada por tests + confirmación explícita
+de Sergio (ver plan de deprecación en `docs/09-roadmap.md`).
+
+Reescrito `docs/09-roadmap.md`: fase α marcada como cerrada, fase β en
+progreso, añadidas fase ε (panel nativo), fase ζ (notificaciones) y
+sección "Add-on deprecation plan".
+
+**Hecho en esta iteración**: encontrado un prototipo ya existente en
+`custom_components/idegis_astralpool/` (de la sesión del 2026-06-02,
+12 entidades) que hoy solo hace polling HTTP a un capturer externo — no
+es autosuficiente. Primer paso hacia la independencia del add-on: portado
+`codec.py` (decoder B0 + `split_b0`) al propio componente, con
+`tests/test_component_codec.py` que lo valida contra un payload real
+documentado y contra la copia del add-on campo a campo (regresión
+cruzada mientras ambas copias convivan). Manifest → `0.1.0`.
+
+Pendiente próxima iteración: `cloud_proxy.py` (receptor MITM como
+`HomeAssistantView` dentro del propio componente, sin backend externo) y
+que el coordinador deje de depender del polling a `:8765`.
+
+---
+
 ## 2026-06-02 — Add-on v0.1.0 desplegado en HA prod + switchover desde CT104
 
 Sesión final del día. Sergio prioriza ir directo al setup en add-on para
