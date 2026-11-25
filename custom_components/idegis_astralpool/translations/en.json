@@ -10,6 +10,27 @@
       "already_configured": "Idegis / AstralPool is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Idegis / AstralPool — alerts",
+        "description": "Pick which conditions should raise an alert, and the notify.* service to send it to (e.g. notify.telegram_jarvis, notify.mobile_app_phone). Leave notify_service empty to disable dispatch while still seeing warnings in the log.",
+        "data": {
+          "ph_enabled": "Alert on pH out of range",
+          "ph_min": "pH minimum",
+          "ph_max": "pH maximum",
+          "salinity_enabled": "Alert on salinity out of range",
+          "salinity_min": "Salinity minimum (g/L)",
+          "salinity_max": "Salinity maximum (g/L)",
+          "session_stale_enabled": "Alert when the chlorinator stops reporting",
+          "session_stale_minutes": "Stale threshold (minutes)",
+          "filtration_enabled": "Alert on low filtration coverage",
+          "filtration_min_coverage_pct": "Minimum coverage (%)",
+          "notify_service": "notify.* service (domain.service)"
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "last_seen": {"name": "Last seen"},

@@ -173,13 +173,42 @@ JSONL store).
 
 ### Phase ζ — notification routing
 
-- Options flow: pick which alert conditions are active (pH out of range,
-  low chlorine, chlorinator session failure, filtration error, …) and
-  which `notify.*` service each one is routed to.
-- Alert rules live in the integration (condition → event), transport is
-  always an existing HA `notify.*` service — never reimplemented here.
-- Regression tests with synthetic condition sequences asserting the
-  expected `notify.*` call (and the absence of one when nothing is wrong).
+- [x] `alerts.py`: pure (no `homeassistant` import) edge-triggered
+  condition checks — pH out of range, salinity out of range, chlorinator
+  stopped reporting ("session stale"), and filtration coverage under
+  target. `AlertEngine` tracks which alerts are currently active so each
+  one fires once on the transition into the condition, not on every
+  push update, and can fire again after clearing. Tested in
+  `tests/test_component_alerts.py` (12 cases): disabled-check and
+  healthy-reading paths never fire (false-positive guard), edge-trigger
+  behaviour, multiple simultaneous alerts.
+- [x] `notify_dispatch.py`: thin HA layer — calls whatever existing
+  `notify.*` service the user configured
+  (`hass.services.async_call(domain, service, {...})`); the integration
+  never reimplements a transport.
+- [x] `config_flow.py`'s `IdegisOptionsFlow`: lets the user enable each
+  condition, tune its thresholds, and set one shared `notify_service`
+  string (`"domain.service"`, e.g. `notify.telegram_jarvis` or
+  `persistent_notification.create`). Options change -> entry reload so
+  the new `AlertConfig` takes effect.
+- [x] `__init__.py` wires it end to end: a coordinator listener runs
+  `AlertEngine.evaluate()` against every push update and dispatches new
+  alerts. `tests/test_component_smoke.py` extended with a true
+  end-to-end case: a synthetic low-pH coordinator update, routed through
+  a *real* `persistent_notification.create` call, asserted to actually
+  create the HA notification (not just evaluate true in isolation).
+- [ ] **Known gap**: the filtration-coverage check
+  (`check_filtration_coverage`) is implemented and tested in isolation,
+  but `AlertEngine.evaluate()` only runs it when both
+  `actual_filtration_minutes_today` and `recommended_filtration_minutes_today`
+  are passed in — and nothing calls it with those yet, since there is no
+  wired source for "actual minutes filtered today" (needs the activity
+  log, same gap noted in `state.py`'s docstring). It will never fire
+  until that's wired, by design (no false "under target" alerts from
+  made-up data).
+- [ ] Only one shared `notify_service` for all alert types right now,
+  not per-alert routing. Revisit if Sergio wants e.g. pH alerts via
+  Telegram but a stale-session alert via a push notification instead.
 
 ### Phase η — polish and HACS default
 

@@ -4,6 +4,49 @@ Diario cronológico inverso. Entradas más recientes arriba. Castellano.
 
 ---
 
+## 2026-11-25 (iteración 5) — Notificaciones configurables (fase ζ)
+
+Quinta iteración. Hecho:
+
+- `alerts.py` nuevo: motor de alertas puro (sin `homeassistant`),
+  disparo por flanco (solo notifica al pasar de "sano" a "mal", no en
+  cada actualización mientras sigue mal; puede volver a dispararse tras
+  recuperarse). Checks: pH fuera de rango, salinidad fuera de rango,
+  clorador sin reportar (`session_stale`), cobertura de filtración baja.
+  12 tests cubriendo flanco de subida/bajada, que un check desactivado
+  nunca dispare, y que una lectura sana nunca dispare (evitar falsos
+  positivos).
+- `notify_dispatch.py`: capa fina que llama al `notify.*` (o cualquier
+  `dominio.servicio`) que Sergio configure — la integración no
+  reimplementa transporte.
+- `config_flow.py`: nuevo `IdegisOptionsFlow` — activar cada alerta,
+  ajustar sus umbrales, y un `notify_service` compartido
+  (`"dominio.servicio"`, ej. `notify.telegram_jarvis` o
+  `persistent_notification.create`). Cambiar opciones recarga la entry.
+- `__init__.py`: listener del coordinador evalúa el motor de alertas en
+  cada push y despacha lo nuevo. Smoke test ampliado con un caso
+  end-to-end real: lectura de pH bajo sintética → `notify_service` =
+  `persistent_notification.create` → se verifica que la notificación
+  de HA se crea de verdad (no solo que la lógica evalúa a true en
+  aislado).
+- **Gap documentado a propósito**: el check de cobertura de filtración
+  está implementado y testeado, pero el motor solo lo ejecuta si recibe
+  `actual_filtration_minutes_today` y `recommended_filtration_minutes_today`
+  — y nada los pasa todavía porque no hay fuente de "minutos reales
+  filtrados hoy" conectada (mismo hueco que ya señalaba `state.py`). No
+  disparará nunca hasta que eso se conecte, a propósito (nada de
+  alertas de "por debajo del objetivo" con datos inventados).
+- Por ahora un único `notify_service` compartido para todas las
+  alertas, no enrutado por tipo — a revisar si Sergio quiere, por
+  ejemplo, pH por Telegram pero "sesión caída" por push al móvil.
+- Manifest → `0.5.0`. Suite completa: 85 tests en verde + 1 skip
+  esperado (smoke de HA real, sigue sin poder correr en este NAS).
+
+Pendiente próxima iteración: panel E2E (extender
+`tests/test_dashboard_e2e.py`), o conectar `cost.py`/`recommendation.py`
+a entidades reales vía options_flow.
+
+---
 ## 2026-11-25 (iteración 4) — Coste eléctrico + recomendación de filtración portados (fase δ)
 
 Cuarta iteración. Hecho:

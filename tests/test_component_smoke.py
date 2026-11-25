@@ -91,3 +91,73 @@ async def test_unload_entry(hass):  # noqa: ANN001
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_options_flow_saves_alert_config(hass):  # noqa: ANN001
+    entry = MockConfigEntry(domain=DOMAIN, data={"mode": "cloud_mitm"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == "form"
+    assert result["step_id"] == "init"
+
+    result2 = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={
+            "ph_enabled": True,
+            "ph_min": 7.0,
+            "ph_max": 7.6,
+            "salinity_enabled": False,
+            "salinity_min": 1.0,
+            "salinity_max": 4.0,
+            "session_stale_enabled": True,
+            "session_stale_minutes": 60,
+            "filtration_enabled": False,
+            "filtration_min_coverage_pct": 70,
+            "notify_service": "persistent_notification.create",
+        },
+    )
+    await hass.async_block_till_done()
+    assert result2["type"] == "create_entry"
+    assert entry.options["ph_enabled"] is True
+    assert entry.options["notify_service"] == "persistent_notification.create"
+
+
+async def test_alert_dispatches_to_notify_service(hass):  # noqa: ANN001
+    """End-to-end: a pH reading out of range, once alerts are enabled
+    and routed to a real HA notify service, must actually create a
+    persistent_notification — not just evaluate true in isolation."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"mode": "cloud_mitm"},
+        options={
+            "ph_enabled": True,
+            "ph_min": 7.0,
+            "ph_max": 7.6,
+            "notify_service": "persistent_notification.create",
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    from custom_components.idegis_astralpool.const import DOMAIN as IDEGIS_DOMAIN
+
+    coordinator = hass.data[IDEGIS_DOMAIN][entry.entry_id]
+    # Simulate a low-pH reading arriving through the coordinator, the
+    # same way push_update() would after a real cloud-MITM write.
+    coordinator.async_set_updated_data(
+        {
+            "online": True,
+            "last_seen": None,
+            "seconds_since_last_seen": 1,
+            "live_measurements": {"ph": {"value": 6.0, "unit": "pH"}},
+            "last_session": None,
+        }
+    )
+    await hass.async_block_till_done()
+
+    notifications = hass.states.async_entity_ids("persistent_notification")
+    assert notifications, "pH alert did not reach persistent_notification.create"
