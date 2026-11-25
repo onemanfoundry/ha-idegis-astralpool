@@ -56,7 +56,11 @@ Cron CT104 cada 30 min: `/opt/piscina/scripts/sentinel.sh`.
 
 ## Convenciones del repo público (objetivo)
 
-- **GitHub user**: `hirofairlane` (alineado con `ha-energy-optimizer`).
+- **GitHub org**: `onemanfoundry` (transferido 2026-11-25, igual que
+  `ha-energy-optimizer`). Remote `origin` apunta a
+  `git@github-omf:onemanfoundry/ha-idegis-astralpool.git`; identidad local
+  del repo = `onemanfoundry-OMF` / `onemanfoundry@gmail.com`. Ver
+  `reference_omf_github_identity` en la memoria raíz del NAS.
 - **Nombre repo**: `ha-idegis-astralpool`.
 - **Licencia**: MIT para código, CC-BY-SA 4.0 para docs.
 - **NO subir** `20200515 Tabla modbus 1.62 - Elite & control connect.xlsm`

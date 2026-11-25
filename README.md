@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Docs: CC BY-SA 4.0](https://img.shields.io/badge/docs-CC%20BY--SA%204.0-lightgrey.svg)](LICENSE-docs)
 [![Project status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange.svg)](work-log.md)
-[![pool-brain tests](https://github.com/hirofairlane/ha-idegis-astralpool/actions/workflows/pool-brain-tests.yml/badge.svg)](https://github.com/hirofairlane/ha-idegis-astralpool/actions/workflows/pool-brain-tests.yml)
+[![pool-brain tests](https://github.com/onemanfoundry/ha-idegis-astralpool/actions/workflows/pool-brain-tests.yml/badge.svg)](https://github.com/onemanfoundry/ha-idegis-astralpool/actions/workflows/pool-brain-tests.yml)
 
 Reverse engineering, documentation and Home Assistant integration for
 **Idegis** and **AstralPool** salt water chlorinators (group Fluidra,
@@ -64,7 +64,7 @@ register map (v1.62) and the same wifi/ethernet module**:
 ## Quick start (path A — recommended)
 
 1. In Home Assistant: **Settings → Add-ons → ⋮ → Repositories → Add**
-   `https://github.com/hirofairlane/ha-idegis-astralpool`.
+   `https://github.com/onemanfoundry/ha-idegis-astralpool`.
 2. Install the **Idegis / AstralPool cloud capturer** add-on and start it.
 3. In HACS: **Integrations → ⋮ → Custom repositories → Add** this same
    repository as an *Integration*.

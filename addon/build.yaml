@@ -11,5 +11,5 @@ codenotary:
 labels:
   org.opencontainers.image.title: "Idegis / AstralPool cloud capturer"
   org.opencontainers.image.description: "Local capture & decode of the Idegis cloud telemetry"
-  org.opencontainers.image.source: "https://github.com/hirofairlane/ha-idegis-astralpool"
+  org.opencontainers.image.source: "https://github.com/onemanfoundry/ha-idegis-astralpool"
   org.opencontainers.image.licenses: "MIT"

@@ -4,8 +4,8 @@ Home Assistant integration for **Idegis** and **AstralPool** salt water
 chlorinators (Fluidra group, Multi-Tec platform). Covers both brands —
 they are OEM rebadging of the same hardware.
 
-> Pre-alpha. See [README](https://github.com/hirofairlane/ha-idegis-astralpool)
-> and [work-log](https://github.com/hirofairlane/ha-idegis-astralpool/blob/main/work-log.md)
+> Pre-alpha. See [README](https://github.com/onemanfoundry/ha-idegis-astralpool)
+> and [work-log](https://github.com/onemanfoundry/ha-idegis-astralpool/blob/main/work-log.md)
 > for status.
 
 ## Reference device

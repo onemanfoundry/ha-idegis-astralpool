@@ -11,5 +11,5 @@ codenotary:
 labels:
   org.opencontainers.image.title: "Idegis Pool Brain"
   org.opencontainers.image.description: "Closed-loop brain — health, schedule, anomalies, weekly email"
-  org.opencontainers.image.source: "https://github.com/hirofairlane/ha-idegis-astralpool"
+  org.opencontainers.image.source: "https://github.com/onemanfoundry/ha-idegis-astralpool"
   org.opencontainers.image.licenses: "MIT"

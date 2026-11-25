@@ -13,7 +13,7 @@ content: >
 
   Lecturas en directo desde el cloud del Idegis (capturadas vía DNS
   override + addon `idegis_capturer`). Más info:
-  [github.com/hirofairlane/ha-idegis-astralpool](https://github.com/hirofairlane/ha-idegis-astralpool)
+  [github.com/onemanfoundry/ha-idegis-astralpool](https://github.com/onemanfoundry/ha-idegis-astralpool)
 ```
 
 ## Four gauges, side by side

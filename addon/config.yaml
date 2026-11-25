@@ -14,7 +14,7 @@ arch:
   - armhf
   - armv7
   - i386
-url: "https://github.com/hirofairlane/ha-idegis-astralpool"
+url: "https://github.com/onemanfoundry/ha-idegis-astralpool"
 startup: services
 boot: auto
 ports:

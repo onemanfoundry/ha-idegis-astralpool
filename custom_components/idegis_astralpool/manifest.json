@@ -1,12 +1,12 @@
 {
   "domain": "idegis_astralpool",
   "name": "Idegis / AstralPool pool chlorinator",
-  "codeowners": ["@hirofairlane"],
+  "codeowners": ["@onemanfoundry-OMF"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/hirofairlane/ha-idegis-astralpool",
+  "documentation": "https://github.com/onemanfoundry/ha-idegis-astralpool",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/hirofairlane/ha-idegis-astralpool/issues",
+  "issue_tracker": "https://github.com/onemanfoundry/ha-idegis-astralpool/issues",
   "loggers": ["custom_components.idegis_astralpool"],
   "requirements": [],
   "version": "0.1.0"

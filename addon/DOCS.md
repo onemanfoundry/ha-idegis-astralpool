@@ -111,4 +111,4 @@ No logs leave your network.
 ## Source
 
 Code, documentation and roadmap:
-<https://github.com/hirofairlane/ha-idegis-astralpool>
+<https://github.com/onemanfoundry/ha-idegis-astralpool>

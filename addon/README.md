@@ -7,7 +7,7 @@ See [DOCS.md](DOCS.md) for full documentation.
 ## Install
 
 1. In Home Assistant: **Settings → Add-ons → ⋮ → Repositories** and add
-   `https://github.com/hirofairlane/ha-idegis-astralpool`.
+   `https://github.com/onemanfoundry/ha-idegis-astralpool`.
 2. Install the **Idegis / AstralPool cloud capturer** add-on.
 3. Install the companion `idegis_astralpool` integration in HACS (custom
    repository).
